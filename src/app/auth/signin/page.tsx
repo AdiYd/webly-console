@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/icon';
@@ -10,11 +10,31 @@ export default function SignIn() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const errorMessage = searchParams.get('error');
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Handle URL error parameters
+  useEffect(() => {
+    if (errorMessage) {
+      switch (errorMessage) {
+        case 'OAuthAccountNotLinked':
+          setError('This email is already associated with another sign-in method');
+          break;
+        case 'AccessDenied':
+          setError('Access denied. You may not have permission to sign in');
+          break;
+        case 'Verification':
+          setError('Email verification required. Please verify your email first');
+          break;
+        default:
+          setError('Authentication error. Please try again');
+      }
+    }
+  }, [errorMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +54,10 @@ export default function SignIn() {
         return;
       }
 
-      router.push(callbackUrl);
+      if (result?.ok) {
+        // Show loading state while redirecting
+        router.push(callbackUrl);
+      }
     } catch (err) {
       console.error('Authentication error:', err);
       setError('An unexpected error occurred');
@@ -42,9 +65,17 @@ export default function SignIn() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    signIn('google', { callbackUrl });
+    try {
+      await signIn('google', { callbackUrl });
+      // Note: This will navigate away, the code below won't execute
+    } catch (err) {
+      // This catch is mainly for client-side errors before redirect
+      console.error('Google sign-in error:', err);
+      setError('Failed to initialize Google sign-in');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -52,7 +83,7 @@ export default function SignIn() {
       <div className="w-full max-w-md space-y-8 bg-base-100 p-8 shadow-lg rounded-xl">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Sign in to your account</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-base-content/70">
             Or{' '}
             <Link href="/auth/signup" className="font-medium text-primary hover:underline">
               create a new account
@@ -139,15 +170,16 @@ export default function SignIn() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t border-base-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-base-100 px-2 text-gray-500">Or continue with</span>
+                <span className="bg-base-100 px-2 text-base-content/70">Or continue with</span>
               </div>
             </div>
 
             <button
-              className="btn btn-link w-full flex items-center justify-center space-x-2"
+              type="button"
+              className="btn btn-outline w-full flex items-center justify-center space-x-2"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
             >
