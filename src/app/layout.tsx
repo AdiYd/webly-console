@@ -29,14 +29,14 @@ export default function RootLayout({
       <body
         className={`${robotoSans.className} ${inter.className} font-sans min-h-screen flex flex-col`}
       >
+        <div className="absolute top-[-10vh] right-[-20vw] w-1/2 h-1/2 rounded-full bg-gradient-to-r from-emerald-500/50 to-violet-500/50 blur-[100px]" />
+        <div className="absolute bottom-0 left-[-10vw] w-1/2 h-1/4 rounded-full bg-gradient-to-r from-amber-300/50 to-pink-400/50 blur-[100px]" />
         {/* Set refetchInterval to periodically check the session status */}
         <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={true}>
           <ThemeProvider defaultTheme="dracula" storageKey="theme">
             <UserProvider>
               <Header />
-              <div className="flex-1">
-                {children}
-              </div>
+              <div className="flex-1">{children}</div>
               <Footer />
             </UserProvider>
           </ThemeProvider>
