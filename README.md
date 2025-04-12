@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Learning Platform - Next.js SaaS Boilerplate
+
+This is a comprehensive boilerplate for an AI-based SaaS project built with Next.js, Shadcn UI, DaisyUI, and Firebase. It provides a complete starting point for building AI-powered educational tools and services.
+
+## Features
+
+- **AI Chat Interface**: Interactive chat powered by multiple AI providers (OpenAI, Anthropic, Gemini, Groq)
+- **Math Exercise Generator**: AI-generated math exercises with customizable difficulty
+- **Modern UI**: Responsive design using Shadcn UI and DaisyUI components
+- **Authentication**: Firebase authentication with Next Auth integration
+- **Database**: Firestore integration for data persistence
+- **Storage**: Firebase storage for file uploads
+- **API Layer**: Uniform API interface to access various AI models
+- **Environment Config**: Secure environment variables setup
+
+## Project Structure
+
+```
+src/
+  ├── app/ - Next.js App Router pages
+  │   ├── page.tsx - Homepage
+  │   ├── chat/ - AI Chat feature pages
+  │   ├── exercises/ - Math Exercise generator pages
+  │   └── api/ - Backend API endpoints
+  │       ├── ai/ - AI service endpoints
+  │       └── [...nextauth]/ - Authentication endpoints
+  ├── components/ - Reusable React components
+  │   ├── ai/ - AI-related components
+  │   └── ui/ - UI components (buttons, navigation, etc.)
+  ├── lib/ - Utility libraries and services
+  │   ├── ai/ - AI service implementation
+  │   └── firebase.ts - Firebase configuration
+  └── auth.ts - Authentication setup
+```
 
 ## Getting Started
 
-First, run the development server:
+1. **Clone the repository**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Set up environment variables**
+   Create a `.env.local` file in the root directory with the following variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```
+   # Firebase Configuration
+   NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+   NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   # Firebase Admin SDK
+   FIREBASE_PROJECT_ID=your-project-id
+   FIREBASE_CLIENT_EMAIL=your-client-email
+   FIREBASE_PRIVATE_KEY="your-private-key"
 
-## Learn More
+   # AI APIs
+   OPENAI_API_KEY=your-openai-api-key
+   ANTHROPIC_API_KEY=your-anthropic-api-key
+   GEMINI_API_KEY=your-gemini-api-key
+   GROQ_API_KEY=your-groq-api-key
 
-To learn more about Next.js, take a look at the following resources:
+   # Next Auth
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=your-nextauth-secret
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. **Run the development server**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. **Open [http://localhost:3000](http://localhost:3000)** with your browser to see the application.
 
-## Deploy on Vercel
+## Customizing AI Providers
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The boilerplate comes with a unified AI service layer that supports multiple providers. To add or modify AI providers:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Update the provider types in `src/lib/ai/config.ts`
+2. Add the corresponding API implementation in `src/lib/ai/service.ts`
+3. Update the environment variables for API keys
+
+## Extending the Application
+
+### Adding New AI Features
+
+1. Create a new component in `src/components/ai/`
+2. Add the corresponding API endpoint in `src/app/api/ai/`
+3. Create a page in `src/app/` to display your new feature
+4. Update the navigation in `src/components/ui/navigation.tsx` to include a link to your new feature
+
+## Deployment
+
+Deploy the application to Vercel:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https://github.com/yourusername/ai-learning-platform)
+
+Make sure to set up all the required environment variables in your Vercel project settings.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
