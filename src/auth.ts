@@ -26,7 +26,7 @@ interface User {
 const demoUser: User = {
   name: 'John Doe',
   email: 'demo@example.com',
-  image: 'https://i.pravatar.cc/300',
+  image: 'https://i.pravatar.cc/150?img=3',
   rememberMe: false,
   role: 'client',
 };

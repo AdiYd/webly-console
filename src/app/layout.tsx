@@ -38,7 +38,7 @@ export default async function RootLayout({
           <ThemeProvider defaultTheme="dracula" storageKey="theme">
             <BlurDecoratives />
             <Header />
-            <div className="flex-1">{children}</div>
+            <div className="flex-1 mt-12">{children}</div>
             <Footer />
           </ThemeProvider>
         </SessionProvider>

@@ -66,7 +66,7 @@ export default function Home() {
                 <button className="btn btn-primary">Start Chatting</button>
               </Link>
               <Link href="/exercises">
-                <button className="btn btn-secondary btn-outline">Generate Exercises</button>
+                <button className="btn btn-accent btn-outline">Generate Exercises</button>
               </Link>
             </div>
           </div>

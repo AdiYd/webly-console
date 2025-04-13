@@ -30,7 +30,48 @@ export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const session = useSession();
 
-  console.log('Session:', session);
+  let authElement = null;
+  let avatar = null;
+  if (session.status === 'authenticated' && session.data?.user?.image) {
+    avatar = (
+      <div className="avatar online">
+        <div className="mask mask-squircle w-8">
+          <img src={session.data?.user?.image} />
+        </div>
+      </div>
+    );
+  }
+
+  switch (session.status) {
+    case 'loading':
+      authElement = <div className="navbar-end">Loading...</div>;
+      break;
+    case 'authenticated':
+      authElement = (
+        <div className="navbar-end gap-1">
+          <ThemeToggle />
+
+          <Link href="/profile" className="btn btn-ghost btn-sm">
+            Profile
+          </Link>
+          {avatar}
+        </div>
+      );
+      break;
+    default:
+      authElement = (
+        <div className="navbar-end gap-1">
+          <ThemeToggle />
+          <Link href="/auth/signin" className="btn btn-ghost btn-sm">
+            Sign In
+          </Link>
+          <Link href="/auth/signup" className="btn btn-primary btn-sm">
+            Sign Up
+          </Link>
+        </div>
+      );
+      break;
+  }
 
   return (
     <div className="navbar min-h-14 bg-base-100/40 backdrop-blur-lg shadow-sm* px-4 border-transparent border-b-zinc-500/30 border-[0.8px]">
@@ -91,15 +132,7 @@ export function Navigation() {
           </li>
         </ul>
       </div>
-      <div className="navbar-end gap-1">
-        <ThemeToggle />
-        <Link href="/auth/signin" className="btn btn-ghost btn-sm">
-          Sign In
-        </Link>
-        <Link href="/auth/signup" className="btn btn-primary btn-sm">
-          Sign Up
-        </Link>
-      </div>
+      {authElement}
     </div>
   );
 }
