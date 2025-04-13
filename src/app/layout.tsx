@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Roboto } from 'next/font/google';
 import { ThemeProvider } from '@/components/ui/theme-provider';
+import { auth } from '@/auth'; // Import auth to get session
 
 import './globals.css';
 import Footer from '@/components/layout/footer';
@@ -20,17 +21,20 @@ export const metadata: Metadata = {
   description: 'AI-powered SaaS platform for Agents',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get the session server-side
+  const session = await auth();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${robotoSans.className} ${inter.className} font-sans relative overflow-x-hidden min-h-screen flex flex-col`}
       >
-        <SessionProvider session={null}>
+        <SessionProvider session={session}>
           <ThemeProvider defaultTheme="dracula" storageKey="theme">
             <BlurDecoratives />
             <Header />

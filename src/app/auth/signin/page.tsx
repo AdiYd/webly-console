@@ -50,7 +50,6 @@ export default function SignIn() {
     if (errorMessage) {
       const errorDetails = {
         error: errorMessage,
-        timestamp: new Date().toISOString(),
         callbackUrl,
         referrer: document.referrer,
       };
@@ -102,7 +101,7 @@ export default function SignIn() {
         password: formData.password,
         redirect: false,
         rememberMe: formData.rememberMe,
-        callbackUrl: callbackUrl || '/home',
+        callbackUrl: callbackUrl || '/',
       });
       console.log('Sign-in result:', result);
 
@@ -204,7 +203,7 @@ export default function SignIn() {
           </button>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <form suppressHydrationWarning onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div className="space-y-4 rounded-md">
             <div>
               <label htmlFor="email" className="block text-sm font-medium">
