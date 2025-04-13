@@ -3,7 +3,7 @@ import { Icon } from '@iconify/react';
 
 const Footer = () => {
   return (
-    <footer className="footer px-4 shadow-sm border-transparent border-t-zinc-500/20 border-[0.8px] bg-base-100/80 backdrop-blur-lg z-10 text-base-content p-6">
+    <footer className="footer w-full px-4 shadow-sm border-transparent border-t-zinc-500/20 border-[0.8px] bg-base-100/80 backdrop-blur-lg z-10 text-base-content p-6 mt-auto">
       <div className="container mx-auto flex flex-col md:flex-row justify-between items-center max-sm:items-stretch">
         <div className="flex items-center space-x-4">
           <Icon icon="mdi:web" className="w-6 h-6 text-primary" />

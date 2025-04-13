@@ -32,13 +32,13 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${robotoSans.className} ${inter.className} font-sans relative overflow-x-hidden min-h-screen flex flex-col`}
+        className={`${robotoSans.className} ${inter.className} font-sans relative max-w-full overflow-x-hidden min-h-screen flex flex-col`}
       >
         <SessionProvider session={session}>
-          <ThemeProvider defaultTheme="dracula" storageKey="theme">
+          <ThemeProvider defaultTheme="dark" storageKey="theme">
             <BlurDecoratives />
             <Header />
-            <div className="flex-1 mt-12">{children}</div>
+            <main className="flex-1 z-10 mt-12 mb-18 h-full flex flex-col">{children}</main>
             <Footer />
           </ThemeProvider>
         </SessionProvider>

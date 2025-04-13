@@ -3,6 +3,7 @@
 import { useTheme, type Theme } from './theme-provider';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
+import { useBreakpoint } from '@/hooks/use-screen';
 
 // Theme categories for better organization
 const themeCategories = {
@@ -11,7 +12,7 @@ const themeCategories = {
   seasonal: ['valentine', 'halloween', 'autumn', 'winter'],
   nature: ['garden', 'forest', 'aqua', 'lemonade'],
   aesthetic: ['lofi', 'pastel', 'fantasy', 'wireframe', 'black', 'luxury', 'dracula', 'cmyk'],
-  mood: ['business', 'acid', 'night', 'coffee', 'caramellatte'],
+  mood: ['business', 'acid', 'night', 'coffee'],
 };
 
 // Theme icons using Iconify
@@ -46,7 +47,7 @@ const themeIconify: Record<string, string> = {
   night: 'mdi:weather-night',
   coffee: 'mdi:coffee',
   winter: 'mdi:snowflake',
-  caramellatte: 'mdi:coffee-to-go',
+  // caramellatte: 'mdi:coffee-to-go',
 };
 
 // Fallback to emoji if Iconify icon is not available
@@ -81,11 +82,12 @@ const themeEmoji: Record<string, string> = {
   night: '🌌',
   coffee: '☕',
   winter: '❄️',
-  caramellatte: '🍮',
+  // caramellatte: '🍮',
 };
 
 export function ThemeToggle() {
   const { theme, setTheme, isDarkTheme } = useTheme();
+  const { isMobile } = useBreakpoint();
   const [isOpen, setIsOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('base');
 
@@ -96,15 +98,15 @@ export function ThemeToggle() {
   };
 
   return (
-    <div className="dropdown dropdown-end">
+    <div className="dropdown static dropdown-end">
       {/* Toggle button with current theme icon */}
-      <div 
-        tabIndex={0} 
-        role="button" 
+      <div
+        tabIndex={0}
+        role="button"
         onClick={() => setIsOpen(!isOpen)}
         className="btn btn-ghost btn-sm btn-circle"
       >
-        { isDarkTheme ? (
+        {isDarkTheme ? (
           <Icon icon="ph:moon-bold" className="h-4 w-4" />
         ) : (
           <Icon icon="ph:sun-bold" className="h-4 w-4" />
@@ -113,16 +115,18 @@ export function ThemeToggle() {
 
       {/* Theme selector dropdown */}
       {isOpen && (
-        <div 
-          tabIndex={0} 
-          className="dropdown-content z-[10] p-3 shadow-lg bg-base-100 rounded-box min-w-64 right-0 mt-2"
-          onClick={(e) => e.stopPropagation()}
+        <div
+          tabIndex={0}
+          className={`dropdown-content ${
+            isMobile ? 'max-w-xs' : ''
+          } z-[10] p-3 shadow-lg bg-base-100 rounded-box min-w-64 right-0 mt-2`}
+          onClick={e => e.stopPropagation()}
         >
           <div className="flex flex-col gap-3">
             {/* Category tabs */}
             <div className="tabs tabs-boxed flex overflow-x-auto">
-              {Object.keys(themeCategories).map((category) => (
-                <a 
+              {Object.keys(themeCategories).map(category => (
+                <a
                   key={category}
                   className={`tab text-xs ${activeCategory === category ? 'tab-active' : ''}`}
                   onClick={() => setActiveCategory(category)}
@@ -131,13 +135,15 @@ export function ThemeToggle() {
                 </a>
               ))}
             </div>
-            
+
             {/* Theme options for selected category */}
             <div className="grid grid-cols-3 gap-1 pt-1 max-h-[30vh] overflow-y-auto">
-              {themeCategories[activeCategory as keyof typeof themeCategories].map((themeName) => (
+              {themeCategories[activeCategory as keyof typeof themeCategories].map(themeName => (
                 <button
                   key={themeName}
-                  className={`btn btn-xs ${theme === themeName ? 'btn-primary' : 'btn-ghost'} flex items-center justify-center p-2 h-auto min-h-0 m-0.5`}
+                  className={`btn btn-xs ${
+                    theme === themeName ? 'btn-primary' : 'btn-ghost'
+                  } flex items-center justify-center p-2 h-auto min-h-0 m-0.5`}
                   onClick={() => applyTheme(themeName as Theme)}
                 >
                   <span className="mr-1 text-xs">

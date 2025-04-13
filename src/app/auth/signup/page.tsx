@@ -148,8 +148,8 @@ export default function SignUp() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-base-100">
-      <div className="w-full max-w-md z-10 space-y-8 bg-base-200 p-8 my-8 shadow-lg rounded-xl">
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md z-10 space-y-8 card p-8 max-sm:px-5 my-8 shadow-lg rounded-xl">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Create an account</h1>
           <p className="mt-2 text-sm text-base-content/70">
@@ -159,23 +159,6 @@ export default function SignUp() {
             </Link>
           </p>
         </div>
-
-        {/* Firebase Status Indicator */}
-        {firebaseStatus && (
-          <div
-            className={`text-xs ${
-              firebaseStatus.includes('successfully') ? 'text-success' : 'text-warning'
-            } flex items-center gap-1`}
-          >
-            <Icon
-              icon={
-                firebaseStatus.includes('successfully') ? 'mdi:check-circle' : 'mdi:alert-circle'
-              }
-              className="h-4 w-4"
-            />
-            <span>{firebaseStatus}</span>
-          </div>
-        )}
 
         <div className="space-y-4">
           <button
@@ -193,7 +176,7 @@ export default function SignUp() {
               <div className="w-full border-t border-base-content/20"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-base-300 px-2 text-base-content/70">Or continue with</span>
+              <span className="bg-base-100 px-2 text-base-content/70">Or continue with</span>
             </div>
           </div>
         </div>

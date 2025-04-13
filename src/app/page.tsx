@@ -19,7 +19,7 @@ function FeatureCard({
   href,
 }: FeatureCardProps) {
   return (
-    <div className="card bg-base-300/70 backdrop-blur-md shadow-md hover:shadow-lg transition-shadow border border-base-300">
+    <div className="card bg-base-100/70 backdrop-blur-md shadow-md hover:shadow-lg transition-shadow border border-base-300">
       <div className="card-body p-6">
         <div className="flex items-center mb-4">
           <div className="w-12 h-12 mr-4 flex items-center justify-center rounded-full /10">
@@ -74,7 +74,7 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16">
+      <section className="py-8">
         <div className="container mx-auto px-6">
           <h2 className="text-3xl font-bold text-center mb-12">AI-Powered Features</h2>
 
@@ -105,7 +105,7 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 ">
+      <section className="pt-8 pb-16 ">
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Get Started?</h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto opacity-90">

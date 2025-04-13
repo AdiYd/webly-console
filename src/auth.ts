@@ -21,6 +21,7 @@ interface User {
   image: string;
   rememberMe: boolean;
   role?: string;
+  id?: string;
 }
 
 const demoUser: User = {
@@ -28,7 +29,7 @@ const demoUser: User = {
   email: 'demo@example.com',
   image: 'https://i.pravatar.cc/150?img=3',
   rememberMe: false,
-  role: 'client',
+  role: 'Trial',
 };
 
 // Define session timing constants
@@ -78,25 +79,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      // Configure OAuth parameter details
-      authorization: {
-        params: {
-          prompt: 'consent',
-          access_type: 'offline',
-          response_type: 'code',
-        },
-        // This profile callback allows customizing user data from Google
-        profile: (profile: any) => {
-          authLog.info('Google profile received', { email: profile.email });
-          return {
-            id: profile.sub,
-            name: profile.name,
-            email: profile.email,
-            image: profile.picture,
-            role: 'user',
-          };
-        },
-      },
+      // authorization: {
+      //   params: {
+      //     prompt: 'consent',
+      //     access_type: 'offline',
+      //     response_type: 'code',
+      //   },
+      // },
+      // profile(profile) {
+      //   authLog.info('Google profile received', { email: profile.email });
+      //   return {
+      //     id: profile.sub,
+      //     name: profile.name,
+      //     email: profile.email,
+      //     image: profile.picture,
+      //     role: 'user',
+      //     rememberMe: false, // Default value for Google login
+      //   };
+      // },
     }),
   ],
 
@@ -112,15 +112,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     // JWT callback - customize the token when created or updated
     async jwt({ token, user, account, trigger }) {
-      authLog.info('Processing JWT', { trigger, email: token?.email });
+      authLog.info('Processing JWT', { trigger, user, account, token });
 
       // First time token is created (sign in)
       if (user) {
-        authLog.success('Setting JWT user data', { userId: user.id });
+        authLog.success('Setting JWT user data', { email: user.email });
 
         // Add user data to token
-        token.id = user.id;
-        token.role = (user as User).role || 'user';
+        token.id = user.id || token.sub;
+        token.role = (user as User).role || 'Trial';
 
         // Set session duration based on rememberMe flag
         if ((user as User).rememberMe) {
@@ -139,33 +139,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         authLog.info(`${account.provider} authentication successful`);
       }
 
+      // Ensure maxAge is always set
+      if (!token.maxAge) {
+        token.maxAge = Default_Period;
+      }
+
       return token;
     },
 
     // Session callback - what data to pass to the client
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       authLog.info('Creating client session', { email: session?.user?.email });
 
       // Add additional token data to the session for client use
       if (session.user && token) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.maxAge = token.maxAge as number;
+        // Map token data to session user
+        session.user.id = token.id || (token.sub as string);
+        session.user.role = (token.role as string) || 'Trial';
+        session.user.name = (token.name as string) || session.user.name;
+        session.user.email = (token.email as string) || session.user.email;
+        session.user.image = (token.picture as string) || session.user.image;
+        session.maxAge = (token.maxAge as number) || Default_Period;
 
-        // Add a session expiry timestamp for client reference
-        session.expires = new Date(Date.now() + (token.maxAge as number) * 1000).toISOString();
-
-        authLog.success('Session data prepared for client', {
-          id: session.user.id,
-          role: session.user.role,
-          expires: session.expires,
-        });
+        // Safely add expires date
+        try {
+          const expiryTimeMs = Date.now() + ((token.maxAge as number) || Default_Period) * 1000;
+          session.expires = new Date(expiryTimeMs).toISOString();
+          authLog.success('Session data prepared for client', session);
+        } catch (error) {
+          authLog.error('Failed to set session expiry', error);
+          // Set a default expiry to avoid errors
+          session.expires = new Date(Date.now() + Default_Period * 1000).toISOString();
+        }
       }
 
       return session;
     },
 
-    // Authorization callback - control access to protected routes
+    // Authorization callback - control access to protected routes, triggered on each request
     async authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
       const path = request.nextUrl.pathname;
@@ -182,10 +193,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
 
-  // Custom pages for authentication flows
-  pages: {
-    signIn: '/auth/signin',
-    signOut: '/auth/signout',
-    error: '/auth/error',
-  },
+  // pages: {
+  //   signIn: '/auth/signin',
+  //   signOut: '/auth/signout',
+  //   error: '/auth/error',
+  // },
 });
