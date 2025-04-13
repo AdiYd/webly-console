@@ -11,7 +11,7 @@ const themeCategories = {
   seasonal: ['valentine', 'halloween', 'autumn', 'winter'],
   nature: ['garden', 'forest', 'aqua', 'lemonade'],
   aesthetic: ['lofi', 'pastel', 'fantasy', 'wireframe', 'black', 'luxury', 'dracula', 'cmyk'],
-  mood: ['business', 'acid', 'night', 'coffee']
+  mood: ['business', 'acid', 'night', 'coffee', 'caramellatte'],
 };
 
 // Theme icons using Iconify
@@ -45,7 +45,8 @@ const themeIconify: Record<string, string> = {
   lemonade: 'mdi:lemon',
   night: 'mdi:weather-night',
   coffee: 'mdi:coffee',
-  winter: 'mdi:snowflake'
+  winter: 'mdi:snowflake',
+  caramellatte: 'mdi:coffee-to-go',
 };
 
 // Fallback to emoji if Iconify icon is not available
@@ -79,7 +80,8 @@ const themeEmoji: Record<string, string> = {
   lemonade: '🍋',
   night: '🌌',
   coffee: '☕',
-  winter: '❄️'
+  winter: '❄️',
+  caramellatte: '🍮',
 };
 
 export function ThemeToggle() {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIService, AIMessage } from '@/lib/ai/service';
-import { auth } from '@/auth';
+import { auth } from '../../../../auth';
 
 export async function POST(req: NextRequest) {
   // Check authentication

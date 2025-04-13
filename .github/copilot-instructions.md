@@ -4,6 +4,8 @@ Use Tailwind and daisyUI components to provide consistent UI.
 Use semantic variables for colors, shadows, border-radius and other variables.
 Use iconify <Icon> in order to add meaningfull icons
 
+Always use best practices for professional UX - for example use Toasts and Alerts to notify the client with errors or approval / confirm of operations, Use loaders between requests and use Skeletons when elements is loading (use skeletons only if a component / element has data to load and require loading state).
+
 
 
 # daisyUI 5
