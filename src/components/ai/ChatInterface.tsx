@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, FormEvent, useRef, useEffect } from 'react';
-import { AIMessage } from '@/lib/ai/service';
-import { availableModels, AIProvider } from '@/lib/ai/config';
+import { useChat } from '@ai-sdk/react'; // Import useChat hook
 import { Icon } from '@iconify/react';
 import { useSession } from 'next-auth/react';
+import { useAI, AIProvider } from '@/context/AIContext';
 
 // File validation constants
 const MAX_FILE_SIZE_MB = 20;
@@ -18,9 +18,7 @@ const ALLOWED_DOC_TYPES = [
 const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES];
 
 interface ChatInterfaceProps {
-  initialMessages?: AIMessage[];
-  initialProvider?: AIProvider;
-  initialModel?: string;
+  initialMessages?: any[];
 }
 
 interface Attachment {
@@ -29,36 +27,77 @@ interface Attachment {
   type: 'image' | 'document';
 }
 
-const exampleChat: AIMessage[] = [
-  {
-    role: 'user',
-    content: 'What is the capital of France?',
-  },
+const exampleChat = [
   {
     role: 'assistant',
-    content: 'The capital of France is Paris.',
+    content: 'Hello! How can I assist you today?',
+    id: '1',
   },
   {
     role: 'user',
-    content: 'Can you show me a picture of the Eiffel Tower?',
+    content: 'What can you do?',
+    id: '2',
   },
   {
     role: 'assistant',
-    content: 'Sure! Here is a picture of the Eiffel Tower.',
+    content:
+      'I can help with a variety of tasks, including answering questions, providing information, and assisting with learning.',
+    id: '3',
   },
-];
+]; // We'll use the useChat hook's messages instead
 
-export default function ChatInterface({
-  initialMessages = exampleChat,
-  initialProvider = 'openai',
-  initialModel = 'gpt-4o',
-}: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+export default function ChatInterface({ initialMessages = exampleChat }: ChatInterfaceProps) {
+  const {
+    provider,
+    model,
+    icon,
+    temperature,
+    systemPrompt,
+    availableProviders,
+    setProvider,
+    setModel,
+  } = useAI();
+
+  // Use the useChat hook for message handling
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit: handleChatSubmit,
+    status,
+    error: chatError,
+    append, // Access append method to add messages programmatically
+  } = useChat({
+    api: '/api/ai/chat', // Our existing API endpoint
+    initialMessages: initialMessages,
+    // Pass additional params needed for our API
+    body: {
+      provider,
+      model,
+      temperature,
+      systemPrompt,
+    },
+    onResponse: response => {
+      // Optional callback when response starts
+      if (!response.ok) {
+        console.error('Chat API response error:', response.statusText);
+      }
+    },
+  });
+
+  // Maintain local error state for UI consistency with existing implementation
   const [error, setError] = useState<string | null>(null);
-  const [provider, setProvider] = useState<AIProvider>(initialProvider);
-  const [model, setModel] = useState(initialModel);
+  // Update local error state when chat hook reports an error
+  useEffect(() => {
+    if (chatError) {
+      console.error('Chat error:', chatError);
+      setError(chatError.message || 'An error occurred');
+    } else {
+      setError(null);
+    }
+  }, [chatError]);
+
+  // Maintain attachments functionality
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -70,19 +109,11 @@ export default function ChatInterface({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  const isLoading = status === 'submitted' || status === 'streaming';
   // Scroll to bottom of messages when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Auto-resize textarea as content grows
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [input]);
 
   // Clear file error after 5 seconds
   useEffect(() => {
@@ -95,6 +126,7 @@ export default function ChatInterface({
   }, [fileError]);
 
   const validateFile = (file: File): { valid: boolean; reason?: string } => {
+    // ...existing code...
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {
       return {
         valid: false,
@@ -113,6 +145,7 @@ export default function ChatInterface({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'document') => {
+    // ...existing code...
     if (!e.target.files?.length) return;
 
     const newFiles: Attachment[] = [];
@@ -144,16 +177,19 @@ export default function ChatInterface({
   };
 
   const handleDragEnter = (e: React.DragEvent) => {
+    // ...existing code...
     e.preventDefault();
     setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
+    // ...existing code...
     e.preventDefault();
     setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    // ...existing code...
     e.preventDefault();
     setIsDragging(false);
 
@@ -186,9 +222,9 @@ export default function ChatInterface({
   };
 
   const removeAttachment = (index: number) => {
+    // ...existing code...
     setAttachments(prev => {
       const updated = [...prev];
-      // Release object URL to prevent memory leaks
       if (updated[index].preview) {
         URL.revokeObjectURL(updated[index].preview);
       }
@@ -199,6 +235,7 @@ export default function ChatInterface({
 
   // Format message content for display, preserving whitespace and line breaks
   const formatMessageContent = (content: string) => {
+    // ...existing code...
     // Split the message by common code block markers
     const parts = content.split(/(```[\s\S]*?```|`[\s\S]*?`)/g);
 
@@ -243,13 +280,13 @@ export default function ChatInterface({
     });
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  // Custom submit handler that integrates attachments with useChat
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
 
-    // TODO: In a real implementation, handle file uploads here
-    // For now, we'll just mention the attachments in the message
+    // Handle attachments
     let messageContent = input;
     if (attachments.length > 0) {
       const fileInfo = attachments.map(a => `[${a.type}: ${a.file.name}]`).join(', ');
@@ -258,45 +295,17 @@ export default function ChatInterface({
         : `Attached files: ${fileInfo}`;
     }
 
-    // Add user message to the chat
-    const userMessage: AIMessage = { role: 'user', content: messageContent };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    // Use append instead of handleChatSubmit to add customized message content
+    append({
+      role: 'user',
+      content: messageContent,
+    });
+
+    // Clear attachments after sending
     setAttachments([]);
-    setError(null);
-    setIsLoading(true);
 
-    try {
-      // Make API request to our AI endpoint
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMessage],
-          provider,
-          model,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get a response');
-      }
-
-      const data = await response.json();
-
-      // Add AI response to the chat
-      const assistantMessage: AIMessage = {
-        role: 'assistant',
-        content: data.text,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (err) {
-      setError((err as Error).message || 'An error occurred');
-      console.error('Error sending message:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    // Focus back on textarea
+    textareaRef.current?.focus();
   };
 
   return (
@@ -309,33 +318,35 @@ export default function ChatInterface({
           <div className="w-3 h-3 rounded-full bg-yellow-500* btn min-h-2 btn-xs btn-secondary btn-circle "></div>
           <div className="w-3 h-3 rounded-full bg-green-500* btn min-h-2 btn-xs btn-accent btn-circle"></div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <Icon icon={icon} className="w-5 h-5" />
+            <select
+              className="select w-max select-sm select-bordered"
+              value={provider}
+              onChange={e => {
+                const newProvider = e.target.value as AIProvider;
+                setProvider(newProvider);
+              }}
+              disabled={isLoading}
+            >
+              {Object.keys(availableProviders).map(p => (
+                <option key={p} value={p} className="flex items-center">
+                  {availableProviders[p as AIProvider].name}
+                </option>
+              ))}
+            </select>
+          </div>
           <select
-            className="select select-sm select-bordered"
-            value={provider}
-            onChange={e => {
-              const newProvider = e.target.value as AIProvider;
-              setProvider(newProvider);
-              setModel(availableModels[newProvider][0]);
-            }}
-            disabled={isLoading}
-          >
-            {Object.keys(availableModels).map(p => (
-              <option key={p} value={p}>
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select select-sm select-bordered"
+            className="select w-fit select-sm select-bordered"
             value={model}
             onChange={e => setModel(e.target.value)}
             disabled={isLoading}
           >
             {provider &&
-              availableModels[provider]?.map(m => (
-                <option key={m} value={m}>
-                  {m}
+              availableProviders[provider]?.models.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
                 </option>
               ))}
           </select>
@@ -348,16 +359,18 @@ export default function ChatInterface({
           <div className="flex flex-col items-center justify-center h-full text-base-content/60">
             <Icon icon="carbon:chat" className="w-16 h-16 mb-4" />
             <p className="text-lg font-medium">Start a conversation with the AI</p>
-            <p className="text-sm">You can also attach files or images</p>
+            <p className="text-sm">
+              Using {model} from {provider}. You can also attach files.
+            </p>
           </div>
         ) : (
           messages.map((message, index) => (
             <div
-              key={index}
+              key={message.id || index}
               className={`chat ${message.role === 'user' ? 'chat-end' : 'chat-start'}`}
             >
               <div className="chat-image avatar online">
-                <div className="w-10 rounded-full bg-base-300">
+                <div className="w-8 rounded-full bg-base-300">
                   {message.role === 'user' ? (
                     <img
                       className="rounded-full"
@@ -374,33 +387,36 @@ export default function ChatInterface({
               </div>
               <div
                 className={`chat-bubble ${
-                  message.role === 'user' ? 'chat-bubble-primary' : 'bg-base-200 text-base-content'
+                  message.role === 'user'
+                    ? 'chat-bubble-primary text-primary-content'
+                    : 'chat-bubble-accent text-accent-content'
                 }`}
               >
-                {formatMessageContent(message.content)}
+                {/* Handle different message formats (string or parts array) */}
+                {message.parts ? (
+                  message.parts.map((part: any, i: number) => {
+                    if (part.type === 'text') {
+                      return formatMessageContent(part.text);
+                    }
+                    return null;
+                  })
+                ) : message.content ? (
+                  formatMessageContent(message.content)
+                ) : isLoading && message.role === 'assistant' && index === messages.length - 1 ? (
+                  <span className="loading loading-dots loading-sm"></span>
+                ) : null}
               </div>
             </div>
           ))
         )}
 
-        {isLoading && (
-          <div className="chat chat-start">
-            <div className="chat-image avatar">
-              <div className="w-10 rounded-full bg-base-300">
-                <Icon icon="carbon:bot" className="w-6 h-6 m-2" />
-              </div>
-            </div>
-            <div className="chat-header mb-1">AI Assistant</div>
-            <div className="chat-bubble bg-base-200">
-              <span className="loading loading-dots"></span>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="alert alert-error shadow-lg">
+        {error && !isLoading && (
+          <div className="alert alert-error shadow-lg mt-2">
             <Icon icon="carbon:warning" className="w-6 h-6" />
             <span>Error: {error}</span>
+            <button className="btn btn-sm btn-ghost" onClick={() => setError(null)}>
+              Close
+            </button>
           </div>
         )}
 
@@ -419,7 +435,8 @@ export default function ChatInterface({
 
       {/* Attachments preview area */}
       {attachments.length > 0 && (
-        <div className="px-4 py-2 flex flex-wrap gap-2 border-transparent border-[0.9px] border-t-zinc-400/20 ">
+        <div className="px-4 py-2 flex flex-wrap gap-3 border-transparent border-[0.9px] border-t-zinc-400/20 ">
+          {/* ...existing attachments preview code... */}
           {attachments.map((attachment, index) => (
             <div key={index} className="relative group">
               {attachment.type === 'image' ? (
@@ -432,7 +449,7 @@ export default function ChatInterface({
                 </div>
               ) : (
                 <div className="w-10 h-10 rounded border* flex items-center justify-center bg-base-200">
-                  <Icon icon="carbon:document" className="w-8 h-8" />
+                  <Icon icon="carbon:document" className="w-10 h-10" />
                 </div>
               )}
               <button
@@ -447,7 +464,7 @@ export default function ChatInterface({
       )}
 
       {/* Input area */}
-      <form onSubmit={handleSubmit} className="p-4 max-sm:p-2 pt-0 ">
+      <form onSubmit={handleChatSubmit} className="p-4 max-sm:p-2 pt-0 ">
         <div
           className={`card flex flex-col rounded-xl border ${
             isDragging ? 'border-primary border-dashed' : 'border-base-300'
@@ -457,19 +474,26 @@ export default function ChatInterface({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex justify-between min-h-[60px] max-h-[200px] p-3 overflow-y-auto">
+          <div className="flex justify-between items-center min-h-[60px] max-h-[200px] p-3">
             <textarea
               ref={textareaRef}
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Type your message or drop files here..."
-              className="w-full resize-none bg-transparent focus:outline-none"
+              className="w-full resize-none bg-transparent focus:outline-none mr-2 overflow-y-auto"
               rows={1}
               disabled={isLoading}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  // handleSubmit(e as any);
+                  handleChatSubmit(e as any); // Call the original handleSubmit from useChat
+                }
+              }}
             />
             <button
               type="submit"
-              className="btn btn-sm btn-primary"
+              className="btn btn-sm btn-primary btn-square"
               disabled={isLoading || (!input.trim() && attachments.length === 0)}
             >
               {isLoading ? (
@@ -480,8 +504,9 @@ export default function ChatInterface({
             </button>
           </div>
 
-          <div className="flex items-center justify-between px-3 py-2* ">
-            <div className="flex gap-2 items-center">
+          <div className="flex items-center gap-2 px-3 pb-1 border-base-300">
+            {/* ...existing file input buttons... */}
+            <div className="flex gap-1 items-center">
               {/* Hidden file inputs */}
               <input
                 type="file"
@@ -503,26 +528,26 @@ export default function ChatInterface({
               {/* File upload buttons */}
               <button
                 type="button"
-                className="btn btn-sm btn-ghost btn-circle"
+                className="btn btn-xs btn-ghost btn-circle"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={isLoading}
                 title="Upload images (JPEG, PNG, GIF, WEBP)"
               >
-                <Icon icon="carbon:image" className="w-5 h-5" />
+                <Icon icon="carbon:image" className="w-4 h-4" />
               </button>
               <button
                 type="button"
-                className="btn btn-sm btn-ghost btn-circle"
+                className="btn btn-xs btn-ghost btn-circle"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
                 title="Upload documents (PDF, Word)"
               >
-                <Icon icon="iconamoon:attachment-light" className="w-5 h-5" />
+                <Icon icon="iconamoon:attachment-light" className="w-4 h-4" />
               </button>
-              <span className="text-xs text-base-content/60">
-                Max file size for trial: {MAX_FILE_SIZE_MB}MB
-              </span>
             </div>
+            <span className="text-xs text-base-content/60">
+              Max file size for trial: {MAX_FILE_SIZE_MB}MB
+            </span>
           </div>
         </div>
       </form>

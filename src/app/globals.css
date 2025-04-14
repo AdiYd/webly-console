@@ -12,7 +12,7 @@
   }
 
   .card{
-    @apply border-zinc-500/20 border-[0.9px] bg-base-100/85 backdrop-blur-md;
+    @apply border-zinc-500/20 border-[0.9px] bg-base-100/60 backdrop-blur-md;
   }
   
 }

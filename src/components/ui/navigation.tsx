@@ -79,7 +79,7 @@ export function Navigation() {
         className="avatar online cursor-pointer"
         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
       >
-        <div className="mask mask-squircle w-8 ring ring-offset-2 ring-primary ring-offset-base-100 hover:opacity-85">
+        <div className="mask mask-circle w-8 ring ring-offset-2 ring-primary ring-offset-base-100 hover:opacity-85">
           <img src={userData.image} alt={userData.name || 'User profile'} />
         </div>
       </div>

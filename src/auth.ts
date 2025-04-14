@@ -39,16 +39,16 @@ const Default_Period = 8 * 60 * 60; // 8 hours in seconds if rememberMe is false
 // Custom logging function for server-side auth logs
 const authLog = {
   info: (message: string, data?: any) => {
-    console.log('\x1b[36m%s\x1b[0m', `[AUTH] ${message}`, data || '');
+    // console.log('\x1b[36m%s\x1b[0m', `[AUTH] ${message}`, data || '');
   },
   success: (message: string, data?: any) => {
-    console.log('\x1b[32m%s\x1b[0m', `[AUTH] ${message}`, data || '');
+    // console.log('\x1b[32m%s\x1b[0m', `[AUTH] ${message}`, data || '');
   },
   warn: (message: string, data?: any) => {
-    console.log('\x1b[33m%s\x1b[0m', `[AUTH] ${message}`, data || '');
+    // console.log('\x1b[33m%s\x1b[0m', `[AUTH] ${message}`, data || '');
   },
   error: (message: string, data?: any) => {
-    console.log('\x1b[31m%s\x1b[0m', `[AUTH] ${message}`, data || '');
+    // console.log('\x1b[31m%s\x1b[0m', `[AUTH] ${message}`, data || '');
   },
 };
 

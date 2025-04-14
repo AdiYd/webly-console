@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Icon } from '@/components/ui/icon';
+import { useAI } from '@/context/AIContext';
 
 interface FeatureCardProps {
   title: string;
@@ -39,14 +40,8 @@ function FeatureCard({
 }
 
 export default function Home() {
-  // const { data: session } = useSession();
-  // useEffect(() => {
-  //   if (session) {
-  //     console.log('User is logged in:', session.user);
-  //   } else {
-  //     console.log('No active session found');
-  //   }
-  // }, [session]);
+  const { provider, model } = useAI();
+  console.log('Provider:', provider, model);
 
   return (
     <main className="min-h-screen ">
@@ -67,6 +62,14 @@ export default function Home() {
               </Link>
               <Link href="/exercises">
                 <button className="btn btn-accent btn-outline">Generate Exercises</button>
+              </Link>
+            </div>
+
+            {/* Current AI model display */}
+            <div className="mt-6 text-sm opacity-70">
+              Currently using <span className="font-semibold">{model}</span> from {provider}
+              <Link href="/profile" className="ml-2 underline">
+                Change model
               </Link>
             </div>
           </div>

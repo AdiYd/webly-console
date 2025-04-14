@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AIProvider, availableModels } from '@/lib/ai/config';
+import { useAI, AIProvider } from '@/context/AIContext';
 import { cn } from '@/lib/utils';
 import { useBreakpoint } from '@/hooks/use-screen';
+import { Icon } from '@/components/ui/icon';
 
 interface UserPreferences {
   defaultProvider: AIProvider;
@@ -13,10 +14,22 @@ interface UserPreferences {
 }
 
 export default function ProfilePage() {
+  const {
+    provider,
+    model,
+    temperature,
+    systemPrompt,
+    availableProviders,
+    setProvider,
+    setModel,
+    setTemperature,
+    setSystemPrompt,
+  } = useAI();
+
   const { isMobile } = useBreakpoint();
   const [preferences, setPreferences] = useState<UserPreferences>({
-    defaultProvider: 'openai',
-    defaultModel: 'gpt-4o',
+    defaultProvider: provider,
+    defaultModel: model,
     theme: 'system',
     saveHistory: true,
   });
@@ -43,19 +56,21 @@ export default function ProfilePage() {
     loadPreferences();
   }, []);
 
-  const handleProviderChange = (provider: AIProvider) => {
-    setPreferences({
-      ...preferences,
+  // Update local preferences when global AI context changes
+  useEffect(() => {
+    setPreferences(prev => ({
+      ...prev,
       defaultProvider: provider,
-      defaultModel: availableModels[provider][0],
-    });
+      defaultModel: model,
+    }));
+  }, [provider, model]);
+
+  const handleProviderChange = (newProvider: AIProvider) => {
+    setProvider(newProvider);
   };
 
-  const handleModelChange = (model: string) => {
-    setPreferences({
-      ...preferences,
-      defaultModel: model,
-    });
+  const handleModelChange = (newModel: string) => {
+    setModel(newModel);
   };
 
   const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
@@ -118,16 +133,16 @@ export default function ProfilePage() {
                   <span className="label-text">Default AI Provider</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {Object.keys(availableModels).map(provider => (
+                  {Object.keys(availableProviders).map(prov => (
                     <button
-                      key={provider}
+                      key={prov}
                       className={cn(
                         'btn btn-sm',
-                        preferences.defaultProvider === provider ? 'btn-primary' : 'btn-outline'
+                        provider === prov ? 'btn-primary' : 'btn-outline'
                       )}
-                      onClick={() => handleProviderChange(provider as AIProvider)}
+                      onClick={() => handleProviderChange(prov as AIProvider)}
                     >
-                      {provider.charAt(0).toUpperCase() + provider.slice(1)}
+                      {availableProviders[prov as AIProvider].name}
                     </button>
                   ))}
                 </div>
@@ -139,18 +154,55 @@ export default function ProfilePage() {
                 </label>
                 <select
                   className="select select-bordered w-full"
-                  value={preferences.defaultModel}
+                  value={model}
                   onChange={e => handleModelChange(e.target.value)}
                 >
-                  {availableModels[preferences.defaultProvider].map(model => (
-                    <option key={model} value={model}>
-                      {model}
+                  {availableProviders[provider].models.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
                     </option>
                   ))}
                 </select>
                 <label className="label">
                   <span className="label-text-alt">
                     Different models have different capabilities and pricing
+                  </span>
+                </label>
+              </div>
+
+              <div className="form-control mb-4">
+                <label className="label">
+                  <span className="label-text">Temperature ({temperature.toFixed(1)})</span>
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={temperature}
+                  onChange={e => setTemperature(parseFloat(e.target.value))}
+                  className="range range-sm range-primary"
+                />
+                <div className="flex justify-between text-xs px-1 mt-1">
+                  <span>Precise (0.0)</span>
+                  <span>Balanced (0.5)</span>
+                  <span>Creative (1.0)</span>
+                </div>
+              </div>
+
+              <div className="form-control mb-4">
+                <label className="label">
+                  <span className="label-text">System Prompt</span>
+                </label>
+                <textarea
+                  className="textarea textarea-bordered w-full h-24"
+                  value={systemPrompt}
+                  onChange={e => setSystemPrompt(e.target.value)}
+                  placeholder="Set a system prompt to guide the AI's responses..."
+                ></textarea>
+                <label className="label">
+                  <span className="label-text-alt">
+                    Use a system prompt to set the behavior and knowledge of the AI assistant
                   </span>
                 </label>
               </div>
@@ -175,6 +227,9 @@ export default function ProfilePage() {
                       )}
                       onClick={() => handleThemeChange(theme as any)}
                     >
+                      {theme === 'light' && <Icon icon="md:sunny" className="mr-1" />}
+                      {theme === 'dark' && <Icon icon="md:moon" className="mr-1" />}
+                      {theme === 'system' && <Icon icon="md:desktop" className="mr-1" />}
                       {theme.charAt(0).toUpperCase() + theme.slice(1)}
                     </button>
                   ))}
@@ -210,22 +265,14 @@ export default function ProfilePage() {
                 <span className="loading loading-spinner loading-xs"></span>
               ) : savedStatus === 'saved' ? (
                 <span className="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 mr-1"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                  <Icon icon="md:checkmark" className="mr-1" />
                   Saved
                 </span>
               ) : savedStatus === 'error' ? (
-                'Error'
+                <span className="flex items-center">
+                  <Icon icon="md:alert" className="mr-1" />
+                  Error
+                </span>
               ) : (
                 'Save Changes'
               )}
@@ -249,7 +296,7 @@ export default function ProfilePage() {
                       >
                         <h3 className="font-medium">{chat.title}</h3>
                         <div className="text-sm text-base-content/70 flex justify-between">
-                          {/* <span>{chat.date.toLocaleDateString()}</span> */}
+                          <span>{chat.date.toLocaleDateString()}</span>
                           <span>{chat.messages} messages</span>
                         </div>
                       </a>
