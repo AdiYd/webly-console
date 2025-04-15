@@ -256,10 +256,7 @@ export function Navigation() {
                 <Link href="/">Home</Link>
               </li>
               <li className="mt-1">
-                <Link href="/chat">AI Chat</Link>
-              </li>
-              <li className="mt-1">
-                <Link href="/exercises">Math Exercises</Link>
+                <Link href="/chat">AI Agent</Link>
               </li>
             </ul>
           )}

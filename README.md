@@ -1,115 +1,151 @@
-# AI Learning Platform - Next.js SaaS Boilerplate
+# 🚀 AI Agent Playground - Next.js Boilerplate
 
-This is a comprehensive boilerplate for an AI-based SaaS project built with Next.js, Shadcn UI, DaisyUI, and Firebase. It provides a complete starting point for building AI-powered educational tools and services.
+[![Next.js](https://img.shields.io/badge/Next.js-14+-black?logo=next.js&logoColor=white)](https://nextjs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3+-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/) [![daisyUI](https://img.shields.io/badge/daisyUI-5+-lightgrey?logo=daisyui&logoColor=black)](https://daisyui.com/) [![Firebase](https://img.shields.io/badge/Firebase-SDK_v10+-orange?logo=firebase&logoColor=white)](https://firebase.google.com/) [![Vercel AI SDK](https://img.shields.io/badge/Vercel_AI_SDK-3+-black?logo=vercel&logoColor=white)](https://sdk.vercel.ai/) [![NextAuth.js](https://img.shields.io/badge/NextAuth.js-5+-blue?logo=nextdotjs&logoColor=white)](https://next-auth.js.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
+A comprehensive boilerplate for building and experimenting with cross-platform AI agents. Built with Next.js, TypeScript, Tailwind CSS, daisyUI, Firebase, Vercel AI SDK, and NextAuth.js, this project provides a robust foundation for developing AI-powered applications and simulators with a focus on professional UI/UX.
 
-- **AI Chat Interface**: Interactive chat powered by multiple AI providers (OpenAI, Anthropic, Gemini, Groq)
-- **Math Exercise Generator**: AI-generated math exercises with customizable difficulty
-- **Modern UI**: Responsive design using Shadcn UI and DaisyUI components
-- **Authentication**: Firebase authentication with Next Auth integration
-- **Database**: Firestore integration for data persistence
-- **Storage**: Firebase storage for file uploads
-- **API Layer**: Uniform API interface to access various AI models
-- **Environment Config**: Secure environment variables setup
+---
 
-## Project Structure
+## ✨ Features
 
+*   **🤖 Cross-Platform AI Agent Interface**: Interactive chat widget powered by the Vercel AI SDK, supporting multiple AI providers (OpenAI, Anthropic, Gemini, Groq, etc.).
+*   **🔥 Firebase Integration**: Seamless integration with Firebase services:
+    *   **Authentication**: Secure user login and management.
+    *   **Firestore**: NoSQL database for application data persistence.
+    *   **Storage**: Cloud storage for file uploads (e.g., chat attachments).
+*   **🛡️ Authentication**: Robust authentication flow using NextAuth.js, integrated with Firebase Auth and supporting various providers (Credentials, Google).
+*   **🎨 Modern UI/UX**: Clean, professional, and responsive user interface built with Tailwind CSS and daisyUI components, emphasizing best practices for user experience. Includes theme switching (light/dark modes).
+*   **⚙️ Unified AI Service Layer**: Abstracted API layer to interact with different AI models consistently.
+*   **🔧 Environment Configuration**: Secure and organized setup for environment variables.
+*   **📐 TypeScript**: Strong typing for enhanced code quality and maintainability.
+*   **🚀 Next.js App Router**: Leverages the latest Next.js features for optimal performance and developer experience.
+
+---
+
+## 🏗️ Project Structure
+
+```plaintext
+webly-console/
+├── public/                 # Static assets
+├── src/
+│   ├── app/                # Next.js App Router (Pages & API Routes)
+│   │   ├── api/            # Backend API endpoints (e.g., /api/ai/chat)
+│   │   │   └── ai/         # AI service endpoints
+│   │   │   └── [...nextauth]/ # NextAuth.js authentication endpoints
+│   │   ├── (auth)/         # Authentication pages (signin, signup)
+│   │   ├── (main)/         # Main application pages (layout, dashboard, etc.)
+│   │   │   ├── chat/       # AI Chat feature page
+│   │   │   ├── exercises/  # Example feature page (Math Exercises)
+│   │   │   └── profile/    # User profile page
+│   │   ├── layout.tsx      # Root layout
+│   │   └── page.tsx        # Homepage
+│   ├── components/         # Reusable React components
+│   │   ├── ai/             # AI-specific components (e.g., ChatInterface)
+│   │   ├── layout/         # Layout components (Header, Footer, Navigation)
+│   │   └── ui/             # General UI components (buttons, theme toggle, etc.)
+│   ├── context/            # React Context providers (e.g., AIContext)
+│   ├── hooks/              # Custom React hooks
+│   ├── lib/                # Utility libraries and services
+│   │   ├── ai/             # AI service implementation (config, service)
+│   │   └── firebase/       # Firebase configuration and client setup
+│   ├── styles/             # Global styles (globals.css)
+│   └── auth.ts             # NextAuth.js configuration
+├── .env.local.example      # Example environment variables file
+├── next.config.mjs         # Next.js configuration
+├── postcss.config.mjs      # PostCSS configuration
+├── tailwind.config.ts      # Tailwind CSS & daisyUI configuration
+├── tsconfig.json           # TypeScript configuration
+└── package.json            # Project dependencies and scripts
 ```
-src/
-  ├── app/ - Next.js App Router pages
-  │   ├── page.tsx - Homepage
-  │   ├── chat/ - AI Chat feature pages
-  │   ├── exercises/ - Math Exercise generator pages
-  │   └── api/ - Backend API endpoints
-  │       ├── ai/ - AI service endpoints
-  │       └── [...nextauth]/ - Authentication endpoints
-  ├── components/ - Reusable React components
-  │   ├── ai/ - AI-related components
-  │   └── ui/ - UI components (buttons, navigation, etc.)
-  ├── lib/ - Utility libraries and services
-  │   ├── ai/ - AI service implementation
-  │   └── firebase.ts - Firebase configuration
-  └── auth.ts - Authentication setup
-```
 
-## Getting Started
+---
 
-1. **Clone the repository**
+## 🚀 Getting Started
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   # or
-   yarn install
-   # or
-   pnpm install
-   ```
+### Prerequisites
 
-3. **Set up environment variables**
-   Create a `.env.local` file in the root directory with the following variables:
+*   Node.js (v18 or later recommended)
+*   npm, yarn, or pnpm
 
-   ```
-   # Firebase Configuration
-   NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
-   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
-   NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
-   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-storage-bucket
-   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
-   NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
+### Installation
 
-   # Firebase Admin SDK
-   FIREBASE_PROJECT_ID=your-project-id
-   FIREBASE_CLIENT_EMAIL=your-client-email
-   FIREBASE_PRIVATE_KEY="your-private-key"
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/AdiYd/webly-console.git
+    cd webly-console
+    ```
 
-   # AI APIs
-   OPENAI_API_KEY=your-openai-api-key
-   ANTHROPIC_API_KEY=your-anthropic-api-key
-   GEMINI_API_KEY=your-gemini-api-key
-   GROQ_API_KEY=your-groq-api-key
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    # or
+    yarn install
+    # or
+    pnpm install
+    ```
 
-   # Next Auth
-   NEXTAUTH_URL=http://localhost:3000
-   NEXTAUTH_SECRET=your-nextauth-secret
-   ```
+3.  **Set up environment variables:**
+    *   Copy the example environment file:
+        ```bash
+        cp .env.local.example .env.local
+        ```
+    *   Fill in the required values in `.env.local`. See the comments within the file for details on each variable. You'll need credentials for:
+        *   Firebase (Client SDK & Admin SDK)
+        *   AI Providers (OpenAI, Anthropic, Gemini, Groq, etc.)
+        *   NextAuth.js (Google Provider, Secret)
 
-4. **Run the development server**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
-   ```
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    # or
+    yarn dev
+    # or
+    pnpm dev
+    ```
 
-5. **Open [http://localhost:3000](http://localhost:3000)** with your browser to see the application.
+5.  **Open your browser:**
+    Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
 
-## Customizing AI Providers
+---
 
-The boilerplate comes with a unified AI service layer that supports multiple providers. To add or modify AI providers:
+## 💡 Key Concepts
 
-1. Update the provider types in `src/lib/ai/config.ts`
-2. Add the corresponding API implementation in `src/lib/ai/service.ts`
-3. Update the environment variables for API keys
+*   **AI Service Layer (`src/lib/ai/`)**: Provides a unified interface (`generateText`, `streamText`, etc.) to interact with various AI models. Configuration (`config.ts`) defines available providers and models, while `service.ts` handles the actual API calls. The `/api/ai/chat` endpoint uses this service.
+*   **Firebase Integration (`src/lib/firebase/`)**: Initializes Firebase client and admin SDKs. Used for authentication state persistence, user data storage (Firestore), and potentially file uploads (Storage).
+*   **Authentication (`src/auth.ts`)**: Configures NextAuth.js, defining providers (Credentials, Google), session strategy (JWT), and callbacks to integrate with Firebase Auth and manage user session data (including roles, custom expiry based on "Remember Me").
+*   **UI/UX (`tailwind.config.ts`, `src/app/globals.css`, `src/components/ui/`)**: Utilizes Tailwind CSS utility classes and daisyUI components for rapid, consistent, and themeable UI development. `ThemeProvider` manages light/dark modes. Custom components ensure a professional look and feel.
+*   **State Management (`src/context/AIContext.tsx`)**: Uses React Context to manage global AI settings like the selected provider, model, temperature, and system prompt, making them accessible throughout the application.
 
-## Extending the Application
+---
 
-### Adding New AI Features
+## 🛠️ Customization
 
-1. Create a new component in `src/components/ai/`
-2. Add the corresponding API endpoint in `src/app/api/ai/`
-3. Create a page in `src/app/` to display your new feature
-4. Update the navigation in `src/components/ui/navigation.tsx` to include a link to your new feature
+*   **AI Providers & Models**:
+    1.  Update `AIProviderName` and `availableProviders` in `src/lib/ai/config.ts`.
+    2.  Add corresponding API logic in `src/lib/ai/service.ts` if necessary.
+    3.  Ensure the relevant API keys are added to `.env.local`.
+    4.  The UI (`ChatInterface`, `ProfilePage`) will automatically reflect the available options.
+*   **UI Theme**:
+    *   Modify `tailwind.config.ts` to change the default daisyUI themes or customize theme colors. See the [daisyUI Theme Generator](https://daisyui.com/theme-generator/).
+    *   Adjust base styles in `src/app/globals.css`.
+*   **Adding Features**:
+    1.  Create new components in `src/components/`.
+    2.  Add API endpoints in `src/app/api/` if backend logic is needed.
+    3.  Create new pages within `src/app/(main)/`.
+    4.  Update navigation links in `src/components/layout/navigation.tsx`.
 
-## Deployment
+---
 
-Deploy the application to Vercel:
+## ☁️ Deployment
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https://github.com/yourusername/ai-learning-platform)
+Deploy the application easily using Vercel:
 
-Make sure to set up all the required environment variables in your Vercel project settings.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https://github.com/yourusername/ai-agent-playground) <!-- Replace with your repo URL -->
 
-## License
+**Important:** Ensure all required environment variables from your `.env.local` file are configured in your Vercel project settings.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
