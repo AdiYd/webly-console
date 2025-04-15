@@ -16,42 +16,42 @@ const themeCategories = {
 };
 
 // Theme icons using Iconify
-const themeIconify: Record<string, string> = {
+export const themeIconify: Record<string, string> = {
   light: 'ph:sun-bold',
   dark: 'ph:moon-bold',
   system: 'ph:desktop-bold',
   cupcake: 'mdi:cupcake',
-  bumblebee: 'fa-solid:bumblebee',
+  bumblebee: 'lucide-lab:bee',
   emerald: 'fa6-solid:gem',
   corporate: 'mdi:office-building',
   synthwave: 'mdi:sine-wave',
-  retro: 'ic:baseline-tv-old',
+  retro: 'fa-solid:camera-retro',
   cyberpunk: 'mdi:robot',
   valentine: 'mdi:heart',
-  halloween: 'fa6-solid:pumpkin',
+  halloween: 'mdi:halloween',
   garden: 'mdi:flower',
   forest: 'mdi:pine-tree',
   aqua: 'mdi:water',
-  lofi: 'mdi:radio-vintage',
+  lofi: 'mdi:fantasy',
   pastel: 'mdi:palette-swatch',
   fantasy: 'mdi:wizard-hat',
   wireframe: 'mdi:pencil-ruler',
   black: 'mdi:circle',
   luxury: 'mdi:crown',
-  dracula: 'mdi:vampire',
   cmyk: 'mdi:printer',
   autumn: 'mdi:leaf-maple',
   business: 'mdi:briefcase',
   acid: 'mdi:flask',
-  lemonade: 'mdi:lemon',
+  lemonade: 'icon-park-outline:lemon',
   night: 'mdi:weather-night',
   coffee: 'mdi:coffee',
   winter: 'mdi:snowflake',
+  dracula: 'game-icons:vampire-dracula',
   // caramellatte: 'mdi:coffee-to-go',
 };
 
 // Fallback to emoji if Iconify icon is not available
-const themeEmoji: Record<string, string> = {
+export const themeEmoji: Record<string, string> = {
   light: '☀️',
   dark: '🌙',
   system: '💻',

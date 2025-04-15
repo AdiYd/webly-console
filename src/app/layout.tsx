@@ -29,6 +29,7 @@ export default async function RootLayout({
 }>) {
   // Get the session server-side
   const session = await auth();
+  // console.log('Session:', session);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -40,7 +41,9 @@ export default async function RootLayout({
             <AIContextProvider>
               <BlurDecoratives />
               <Header />
-              <main className="flex-1 z-10 mt-12 mb-18 h-full flex flex-col">{children}</main>
+              <main className="flex-1 z-10 mt-12 mb-18 h-full min-h-[fill-available] flex flex-col">
+                {children}
+              </main>
               <Footer />
             </AIContextProvider>
           </ThemeProvider>

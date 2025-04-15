@@ -1,6 +1,9 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { clientFirebase } from '@/lib/firebase/firebase';
 
 declare module 'next-auth' {
   interface Session {
@@ -19,7 +22,7 @@ interface User {
   name: string;
   email: string;
   image: string;
-  rememberMe: boolean;
+  rememberMe: string;
   role?: string;
   id?: string;
 }
@@ -28,7 +31,7 @@ const demoUser: User = {
   name: 'John Doe',
   email: 'demo@example.com',
   image: 'https://i.pravatar.cc/150?img=3',
-  rememberMe: false,
+  rememberMe: 'false',
   role: 'Trial',
 };
 
@@ -39,16 +42,16 @@ const Default_Period = 8 * 60 * 60; // 8 hours in seconds if rememberMe is false
 // Custom logging function for server-side auth logs
 const authLog = {
   info: (message: string, data?: any) => {
-    // console.log('\x1b[36m%s\x1b[0m', `[AUTH] ${message}`, data || '');
+    console.log('\x1b[36m%s\x1b[0m', `[AUTH] ${message}`, data || '');
   },
   success: (message: string, data?: any) => {
-    // console.log('\x1b[32m%s\x1b[0m', `[AUTH] ${message}`, data || '');
+    console.log('\x1b[32m%s\x1b[0m', `[AUTH] ${message}`, data || '');
   },
   warn: (message: string, data?: any) => {
-    // console.log('\x1b[33m%s\x1b[0m', `[AUTH] ${message}`, data || '');
+    console.log('\x1b[33m%s\x1b[0m', `[AUTH] ${message}`, data || '');
   },
   error: (message: string, data?: any) => {
-    // console.log('\x1b[31m%s\x1b[0m', `[AUTH] ${message}`, data || '');
+    console.log('\x1b[31m%s\x1b[0m', `[AUTH] ${message}`, data || '');
   },
 };
 
@@ -58,45 +61,106 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   // Configure authentication providers
   providers: [
-    // Credential-based authentication (email/password)
+    // Connect Credentials provider with Firebase Auth
     Credentials({
       authorize: async (credentials: any) => {
-        authLog.info('Processing credentials authorization', { email: credentials.email });
+        authLog.info('Processing Firebase credentials authorization', { email: credentials.email });
 
         try {
-          // TODO: Replace with actual authentication logic against your database
-          // This is just a mock implementation for demonstration
-          let user = { ...demoUser, rememberMe: credentials.rememberMe, email: credentials.email };
+          // Check that Firebase is initialized
+          if (!clientFirebase.auth) {
+            throw new Error('Firebase Auth is not initialized');
+          }
 
-          authLog.success('User authorized successfully', { email: user.email, role: user.role });
-          return user;
+          // Authenticate with Firebase
+          const userCredential = await signInWithEmailAndPassword(
+            clientFirebase.auth,
+            credentials.email,
+            credentials.password
+          );
+
+          const firebaseUser = userCredential.user;
+          // Get additional user data from Firestore
+          if (clientFirebase.db) {
+            const userDoc = await getDoc(
+              doc(clientFirebase.db, 'users', firebaseUser.email || firebaseUser.uid)
+            );
+            if (userDoc.exists()) {
+              // Return combined data from Firebase Auth and Firestore
+              return {
+                id: firebaseUser.uid,
+                email: firebaseUser.email,
+                name: userDoc.data().name || firebaseUser.displayName || '',
+                image: userDoc.data().image || demoUser.image,
+                role: userDoc.data().role || 'Trial',
+                rememberMe: credentials.rememberMe,
+              };
+            }
+          }
+
+          // If no Firestore data or DB not initialized, return basic user
+          return {
+            id: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: firebaseUser.displayName || '',
+            image: demoUser.image,
+            role: 'Trial',
+            rememberMe: credentials.rememberMe || false,
+          };
         } catch (error) {
-          authLog.error('Failed to authorize user', error);
+          authLog.error('Failed to authorize with Firebase', error);
           return null;
         }
       },
     }),
+
+    // Update Google provider to link with Firebase
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      // authorization: {
-      //   params: {
-      //     prompt: 'consent',
-      //     access_type: 'offline',
-      //     response_type: 'code',
-      //   },
-      // },
-      // profile(profile) {
-      //   authLog.info('Google profile received', { email: profile.email });
-      //   return {
-      //     id: profile.sub,
-      //     name: profile.name,
-      //     email: profile.email,
-      //     image: profile.picture,
-      //     role: 'user',
-      //     rememberMe: false, // Default value for Google login
-      //   };
-      // },
+      authorization: {
+        params: {
+          prompt: 'consent',
+          access_type: 'offline',
+          response_type: 'code',
+        },
+      },
+      async profile(profile, tokens) {
+        // authLog.info('Google profile received', { email: profile.email, tokens, profile });
+
+        try {
+          const clientProfile = {
+            id: profile.sub,
+            name: profile.name || '',
+            email: profile.email || '',
+            image: profile.picture || '',
+            role: 'Trial',
+            rememberMe: false,
+          };
+
+          // Check if user exists in Firestore
+          if (clientFirebase.db) {
+            const userDoc = await getDoc(doc(clientFirebase.db, 'users', profile.email));
+            if (userDoc.exists()) {
+              authLog.success('User found in Firestore', { email: profile.email });
+              const userData = userDoc.data();
+              clientProfile.role = userData.role || 'Trial';
+              clientProfile.rememberMe = userData.rememberMe || false;
+            } else {
+              await setDoc(doc(clientFirebase.db, 'users', profile.email), {
+                ...clientProfile,
+                createdAt: new Date().toISOString(),
+                provider: 'google',
+              });
+            }
+          }
+
+          return clientProfile;
+        } catch (error) {
+          authLog.error('Error processing Google profile', error);
+          throw error;
+        }
+      },
     }),
   ],
 
@@ -112,7 +176,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     // JWT callback - customize the token when created or updated
     async jwt({ token, user, account, trigger }) {
-      authLog.info('Processing JWT', { trigger, user, account, token });
+      authLog.info('Processing JWT', { trigger, user, token });
 
       // First time token is created (sign in)
       if (user) {
@@ -121,9 +185,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Add user data to token
         token.id = user.id || token.sub;
         token.role = (user as User).role || 'Trial';
+        token.name = (user as User).name || user.name;
 
         // Set session duration based on rememberMe flag
-        if ((user as User).rememberMe) {
+        if ((user as User).rememberMe !== 'false') {
           token.maxAge = RememberMe_Period;
           authLog.info('Extended session created (30 days)');
         } else {
@@ -136,7 +201,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account) {
         token.accessToken = account.access_token;
         token.provider = account.provider;
-        authLog.info(`${account.provider} authentication successful`);
+        token.idToken = account.id_token;
+        authLog.success(`${account.provider} authentication successful`);
       }
 
       // Ensure maxAge is always set
@@ -158,21 +224,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = (token.role as string) || 'Trial';
         session.user.name = (token.name as string) || session.user.name;
         session.user.email = (token.email as string) || session.user.email;
-        session.user.image = (token.picture as string) || session.user.image;
+        session.user.image = (token.picture as string) || session.user.image || demoUser.image;
         session.maxAge = (token.maxAge as number) || Default_Period;
 
         // Safely add expires date
         try {
           const expiryTimeMs = Date.now() + ((token.maxAge as number) || Default_Period) * 1000;
           session.expires = new Date(expiryTimeMs).toISOString();
-          authLog.success('Session data prepared for client', session);
+          // authLog.success('Session data prepared for client', session);
         } catch (error) {
           authLog.error('Failed to set session expiry', error);
           // Set a default expiry to avoid errors
           session.expires = new Date(Date.now() + Default_Period * 1000).toISOString();
         }
       }
-
+      session.status = 'authenticated';
+      authLog.success('Session data:', session);
       return session;
     },
 
@@ -193,9 +260,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
 
-  // pages: {
-  //   signIn: '/auth/signin',
-  //   signOut: '/auth/signout',
-  //   error: '/auth/error',
-  // },
+  pages: {
+    signIn: '/auth/signin',
+    signOut: '/auth/signout',
+    error: '/auth/error',
+  },
 });

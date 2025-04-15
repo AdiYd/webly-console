@@ -1,0 +1,36 @@
+/* Styles for the resizable handle */
+.react-resizable {
+  position: relative;
+}
+
+.react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  background-color: transparent;
+  cursor: se-resize;
+  z-index: 10;
+}
+
+.react-resizable-handle::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid rgba(var(--color-base-content) / 0.3);
+  border-bottom: 2px solid rgba(var(--color-base-content) / 0.3);
+}
+
+/* Style for drag handle */
+.drag-handle {
+  user-select: none;
+}
+
+/* Add some transition for smoother visual effects */
+.card {
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+}

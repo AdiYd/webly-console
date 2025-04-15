@@ -20,9 +20,6 @@ export default function SignIn() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState(false);
-  const [firebaseStatus, setFirebaseStatus] = useState('');
 
   // Check Firebase initialization on mount
   useEffect(() => {
@@ -34,12 +31,6 @@ export default function SignIn() {
       };
 
       console.log('%c[Firebase Status]', 'color: lightpurple;', fbStatus);
-
-      setFirebaseStatus(
-        fbStatus.error
-          ? 'Firebase initialization issues detected'
-          : 'Firebase initialized successfully'
-      );
     } catch (err) {
       console.error('Error checking Firebase status:', err);
     }
@@ -55,8 +46,6 @@ export default function SignIn() {
       };
 
       console.error('Auth error detected:', errorDetails);
-      setDebugInfo(JSON.stringify(errorDetails, null, 2));
-
       switch (errorMessage) {
         case 'OAuthAccountNotLinked':
           setError(
@@ -82,6 +71,9 @@ export default function SignIn() {
         case 'OAuthSignin':
           setError('Could not initiate Google sign-in. Please try again later.');
           break;
+        case 'GoogleSignInFailed':
+          setError('Failed to sign in with Google. Your account may not be registered.');
+          break;
         default:
           setError(`Authentication error: ${errorMessage}. Please try again or contact support.`);
       }
@@ -94,12 +86,21 @@ export default function SignIn() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
+    // Verify email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      console.log('Submitting sign-in form...', formData);
       const result = await signIn('credentials', {
         email: formData.email,
         password: formData.password,
         redirect: false,
+        // redirectTo: '/',
         rememberMe: formData.rememberMe,
         callbackUrl: callbackUrl || '/',
       });
@@ -138,15 +139,18 @@ export default function SignIn() {
     console.log('Callback URL:', callbackUrl);
 
     try {
+      // Show a toast notification that we're redirecting to Google
+      // You can use a toast library or implement your own toast component
+      console.log('Redirecting to Google authentication...');
+
       // Using the nextAuthSignIn function for Google authentication
       await signIn('google', {
-        callbackUrl: callbackUrl || '/home',
+        callbackUrl: callbackUrl || '/',
       });
       // The code below won't execute due to the redirect
-      console.log('Google sign-in initiated successfully');
     } catch (err) {
       console.error('Google sign-in error:', err);
-      setError('Failed to initialize Google sign-in');
+      setError('Failed to initialize Google sign-in. Please try again later.');
       setIsLoading(false);
     }
   };
@@ -169,21 +173,6 @@ export default function SignIn() {
             <Icon icon="mdi:close-circle" className="h-5 w-5" />
             <span>{error}</span>
           </div>
-        )}
-
-        {debugInfo && showDebug && (
-          <div className="mt-2 p-3 bg-base-300 rounded text-xs overflow-auto max-h-32">
-            <pre>{debugInfo}</pre>
-          </div>
-        )}
-
-        {errorMessage && (
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className="text-xs text-base-content/50 hover:text-primary"
-          >
-            {showDebug ? 'Hide debug info' : 'Show debug info'}
-          </button>
         )}
 
         <form suppressHydrationWarning onSubmit={handleSubmit} className="mt-8 space-y-6">
@@ -237,10 +226,7 @@ export default function SignIn() {
               </label>
             </div>
             <div className="text-sm">
-              <Link
-                href="/auth/forgot-password"
-                className="font-medium text-primary hover:underline"
-              >
+              <Link href="#" className="font-medium text-primary hover:underline">
                 Forgot your password?
               </Link>
             </div>

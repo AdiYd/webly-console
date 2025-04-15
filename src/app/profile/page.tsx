@@ -5,11 +5,23 @@ import { useAI, AIProvider } from '@/context/AIContext';
 import { cn } from '@/lib/utils';
 import { useBreakpoint } from '@/hooks/use-screen';
 import { Icon } from '@/components/ui/icon';
+import { useTheme, Theme } from '@/components/ui/theme-provider';
+import { themeEmoji, themeIconify } from '@/components/ui/theme-toggle';
+
+// Import the theme categories and icons from theme-toggle
+const themeCategories = {
+  base: ['light', 'dark', 'system'],
+  colorful: ['cupcake', 'bumblebee', 'emerald', 'corporate', 'synthwave', 'retro', 'cyberpunk'],
+  seasonal: ['valentine', 'halloween', 'autumn', 'winter'],
+  nature: ['garden', 'forest', 'aqua', 'lemonade'],
+  aesthetic: ['lofi', 'pastel', 'fantasy', 'wireframe', 'black', 'luxury', 'dracula', 'cmyk'],
+  mood: ['business', 'acid', 'night', 'coffee'],
+};
 
 interface UserPreferences {
   defaultProvider: AIProvider;
   defaultModel: string;
-  theme: 'light' | 'dark' | 'system';
+  theme: Theme;
   saveHistory: boolean;
 }
 
@@ -26,11 +38,14 @@ export default function ProfilePage() {
     setSystemPrompt,
   } = useAI();
 
+  const { theme, setTheme, isDarkTheme } = useTheme();
   const { isMobile } = useBreakpoint();
+  const [activeCategory, setActiveCategory] = useState<string>('base');
+
   const [preferences, setPreferences] = useState<UserPreferences>({
     defaultProvider: provider,
     defaultModel: model,
-    theme: 'system',
+    theme: theme as Theme,
     saveHistory: true,
   });
 
@@ -62,8 +77,9 @@ export default function ProfilePage() {
       ...prev,
       defaultProvider: provider,
       defaultModel: model,
+      theme: theme as Theme,
     }));
-  }, [provider, model]);
+  }, [provider, model, theme]);
 
   const handleProviderChange = (newProvider: AIProvider) => {
     setProvider(newProvider);
@@ -73,11 +89,12 @@ export default function ProfilePage() {
     setModel(newModel);
   };
 
-  const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
-    setPreferences({
-      ...preferences,
-      theme,
-    });
+  const handleThemeChange = (newTheme: Theme) => {
+    setTheme(newTheme);
+    setPreferences(prev => ({
+      ...prev,
+      theme: newTheme,
+    }));
   };
 
   const handleSaveHistoryChange = (saveHistory: boolean) => {
@@ -114,6 +131,19 @@ export default function ProfilePage() {
     { id: '3', title: 'History questions', date: new Date('2025-04-05'), messages: 15 },
   ];
 
+  // Get theme display name with proper capitalization
+  const getDisplayThemeName = (themeName: string) => {
+    if (themeName === 'system') {
+      return 'System (OS Default)';
+    }
+    return themeName.charAt(0).toUpperCase() + themeName.slice(1);
+  };
+
+  // Get theme icon
+  const getThemeIcon = (themeName: string) => {
+    return themeIconify[themeName] || themeEmoji[themeName] || 'mdi:theme-light-dark';
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 md:py-8">
       <h1 className="text-2xl font-bold mb-4 md:mb-6">Your Profile</h1>
@@ -137,11 +167,18 @@ export default function ProfilePage() {
                     <button
                       key={prov}
                       className={cn(
-                        'btn btn-sm',
-                        provider === prov ? 'btn-primary' : 'btn-outline'
+                        'btn btn-sm flex gap-2',
+                        provider === prov ? 'btn-soft btn-primary' : 'btn-ghost'
                       )}
                       onClick={() => handleProviderChange(prov as AIProvider)}
                     >
+                      {availableProviders[prov as AIProvider].icon && (
+                        <Icon
+                          icon={availableProviders[prov as AIProvider].icon || 'mdi:robot'}
+                          width={16}
+                          className="w-4 h-4 mr-1"
+                        />
+                      )}
                       {availableProviders[prov as AIProvider].name}
                     </button>
                   ))}
@@ -181,7 +218,7 @@ export default function ProfilePage() {
                   step="0.1"
                   value={temperature}
                   onChange={e => setTemperature(parseFloat(e.target.value))}
-                  className="range range-sm range-primary"
+                  className="range range-accent range-xs"
                 />
                 <div className="flex justify-between text-xs px-1 mt-1">
                   <span>Precise (0.0)</span>
@@ -211,33 +248,94 @@ export default function ProfilePage() {
 
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4 md:p-6">
-              <h2 className="card-title">Interface Settings</h2>
+              <h2 className="card-title mb-2">Interface Settings</h2>
 
+              {/* Current Theme Display Card */}
+              <div className="card bg-base-200 mb-6">
+                <div className="card-body p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2 rounded-full`}>
+                        <Icon icon={getThemeIcon(theme)} className="" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">{getDisplayThemeName(theme)}</h3>
+                        <p className="text-xs text-base-content/70">
+                          {isDarkTheme ? 'Dark theme' : 'Light theme'}
+                          {theme === 'system' &&
+                            ` (${isDarkTheme ? 'currently dark' : 'currently light'})`}
+                        </p>
+                      </div>
+                      <div className="flex relative -top-[6px] mx-2 gap-2 z-10">
+                        <div className="w-3 h-3 rounded-full bg-red-500* btn min-h-2 btn-xs btn-primary btn-circle "></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500* btn min-h-2 btn-xs btn-secondary btn-circle "></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500* btn min-h-2 btn-xs btn-accent btn-circle"></div>
+                      </div>
+                    </div>
+                    <div className="badge badge-sm badge-outline">
+                      {theme === 'system'
+                        ? 'System default'
+                        : Object.entries(themeCategories).find(([_, themes]) =>
+                            themes.includes(theme)
+                          )?.[0] || 'Custom'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Theme Categories Tabs */}
               <div className="form-control mb-4">
                 <label className="label">
-                  <span className="label-text">Theme Preference</span>
+                  <span className="label-text font-medium">Theme Preference</span>
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {['light', 'dark', 'system'].map(theme => (
-                    <button
-                      key={theme}
-                      className={cn(
-                        'btn btn-sm',
-                        preferences.theme === theme ? 'btn-primary' : 'btn-outline'
-                      )}
-                      onClick={() => handleThemeChange(theme as any)}
+
+                <div className="tabs tabs-boxed flex overflow-x-auto mb-4">
+                  {Object.keys(themeCategories).map(category => (
+                    <a
+                      key={category}
+                      className={`tab text-xs ${activeCategory === category ? 'tab-active' : ''}`}
+                      onClick={() => setActiveCategory(category)}
                     >
-                      {theme === 'light' && <Icon icon="md:sunny" className="mr-1" />}
-                      {theme === 'dark' && <Icon icon="md:moon" className="mr-1" />}
-                      {theme === 'system' && <Icon icon="md:desktop" className="mr-1" />}
-                      {theme.charAt(0).toUpperCase() + theme.slice(1)}
-                    </button>
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </a>
                   ))}
+                </div>
+
+                {/* Theme Options Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[240px] overflow-y-auto p-1">
+                  {themeCategories[activeCategory as keyof typeof themeCategories].map(
+                    themeName => (
+                      <button
+                        key={themeName}
+                        onClick={() => handleThemeChange(themeName as Theme)}
+                        className={`btn btn-xs ${
+                          theme === themeName ? 'btn-primary' : 'btn-outline'
+                        }  flex items-center justify-start py-2 gap-2 h-auto normal-case`}
+                      >
+                        <div
+                          className={`w-6 h-6  mask mask-hexagon-2 flex justify-center ${
+                            isDarkTheme
+                              ? 'bg-neutral !text-neutral-content'
+                              : 'bg-gray-100 !text-black'
+                          }`}
+                        >
+                          {themeIconify[themeName] ? (
+                            <Icon icon={themeIconify[themeName]} className="m-auto self-center" />
+                          ) : (
+                            <span>{themeEmoji[themeName] || '🎨'}</span>
+                          )}
+                        </div>
+                        <span className="text-sm">
+                          {themeName === 'system' ? 'System (OS)' : themeName}
+                        </span>
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
 
               <div className="form-control">
-                <label className="label cursor-pointer">
+                <label className="label justify-start gap-8 cursor-pointer">
                   <span className="label-text">Save Chat History</span>
                   <input
                     type="checkbox"
@@ -279,6 +377,28 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+
+        {savedStatus === 'saved' && (
+          <div
+            role="alert"
+            className="alert alert-success w-fit fixed top-8 right-[45%] z-50 shadow-lg"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6 shrink-0 stroke-current"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>Changes saved!</span>
+          </div>
+        )}
 
         {/* Sidebar */}
         <div>

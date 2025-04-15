@@ -6,7 +6,7 @@ import { getStorage as getClientStorage } from 'firebase/storage';
 
 // Debug utilities
 const debugFirebase = (message: string, data?: any) => {
-  console.log(`[Firebase Debug] ${message}`, data || '');
+  // console.log(`[Firebase Debug] ${message}`, data || '');
 };
 
 const logError = (context: string, error: unknown) => {
@@ -25,17 +25,17 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-debugFirebase('Firebase configuration', {
-  apiKeyExists: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomainExists: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectIdExists: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  configComplete: !!(
-    firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.projectId &&
-    firebaseConfig.appId
-  ),
-});
+// debugFirebase('Firebase configuration', {
+//   apiKeyExists: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+//   authDomainExists: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+//   projectIdExists: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+//   configComplete: !!(
+//     firebaseConfig.apiKey &&
+//     firebaseConfig.authDomain &&
+//     firebaseConfig.projectId &&
+//     firebaseConfig.appId
+//   ),
+// });
 
 // Initialize Client Firebase
 function initializeClientFirebase() {

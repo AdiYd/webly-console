@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { Icon } from '@/components/ui/icon';
 import { useAI } from '@/context/AIContext';
+import FireDots from '@/components/ui/fireFlies/firedots';
+import { useTheme } from '@/components/ui/theme-provider';
 
 interface FeatureCardProps {
   title: string;
@@ -23,10 +25,10 @@ function FeatureCard({
     <div className="card bg-base-100/70 backdrop-blur-md shadow-md hover:shadow-lg transition-shadow border border-base-300">
       <div className="card-body p-6">
         <div className="flex items-center mb-4">
-          <div className="w-12 h-12 mr-4 flex items-center justify-center rounded-full /10">
-            <Icon icon={icon} className="h-8 w-8 text-primary" />
+          <div className=" mr-4 flex items-center justify-center rounded-full /10">
+            <Icon icon={icon} width={40} />
           </div>
-          <h3 className="card-title text-xl font-bold">{title}</h3>
+          <h3 className="card-title text-xl text-start font-bold">{title}</h3>
         </div>
         <p>{description}</p>
         <div className="card-actions justify-end mt-4">
@@ -41,10 +43,12 @@ function FeatureCard({
 
 export default function Home() {
   const { provider, model } = useAI();
-  console.log('Provider:', provider, model);
+  const { theme, isDarkTheme } = useTheme();
+  // console.log('Provider:', provider, model);
 
   return (
-    <main className="min-h-screen ">
+    <div className="">
+      {(isDarkTheme || theme === 'aqua') && <FireDots particleNum={30} particleBaseSize={20} />}
       {/* Hero Section */}
       <section className="hero py-20 ">
         <div className="hero-content text-center">
@@ -85,7 +89,7 @@ export default function Home() {
             <FeatureCard
               title="AI Chat Assistant"
               description="Get instant answers to your questions with our advanced AI chat assistant. Powered by leading language models."
-              icon="md:chatbubble-ellipses"
+              icon="proicons:chat"
               btnColor="btn-primary"
               href="/chat"
             />
@@ -120,6 +124,6 @@ export default function Home() {
           </Link>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

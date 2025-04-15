@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 // Import streamText and specific provider integrations with tools
-import { streamText, Message as AIMessage, tool } from 'ai';
+import { streamText, Message as AIMessage, tool, Tool } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { google } from '@ai-sdk/google';
@@ -26,7 +26,7 @@ const getApiKey = (provider: string): string => {
 
 // Example AI tool for weather information (placeholder)
 const weatherTool = tool({
-  name: 'weather',
+  // name: 'weather',
   description: 'Get the weather in a location (fahrenheit)',
   parameters: z.object({
     location: z.string().describe('The location to get the weather for'),
@@ -46,7 +46,7 @@ const weatherTool = tool({
 
 // Example AI tool for current time (placeholder)
 const timeTool = tool({
-  name: 'getCurrentTime',
+  // name: 'getCurrentTime',
   description: 'Get the current time in a specific timezone',
   parameters: z.object({
     timezone: z
@@ -91,8 +91,6 @@ export async function POST(req: NextRequest) {
       maxTokens,
       messageCount: messages?.length,
     });
-    const aiModel = openai(model);
-    console.log('AI Model:', aiModel.modelId, aiModel);
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'Invalid messages format' }), {
         status: 400,
@@ -123,13 +121,13 @@ export async function POST(req: NextRequest) {
 
       case 'anthropic':
         result = streamText({
-          model: anthropic(model),
+          model: anthropic('claude-3-5-sonnet-20241022'),
           messages: messages as AIMessage[],
           system: systemPrompt || undefined,
           temperature,
           ...(maxTokens ? { maxTokens } : {}),
           // Note: Add tools only if the model supports them (may vary by provider)
-          ...(model.includes('claude-3') ? { tools: commonTools } : {}),
+          // ...(model.includes('claude-3') ? { tools: commonTools } : {}),
         });
         break;
 

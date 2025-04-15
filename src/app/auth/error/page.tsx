@@ -115,13 +115,13 @@ export default function AuthError() {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div
-              className={`rounded-full ${
+              className={`rounded-full flex justify-center  ${
                 errorDetails.severity === 'error'
                   ? 'bg-error/10 text-error'
                   : 'bg-warning/10 text-warning'
-              } p-4`}
+              } p-2`}
             >
-              <Icon icon={errorDetails.icon} className="h-12 w-12" />
+              <Icon icon={errorDetails.icon} width={40} height={40} />
             </div>
           </div>
 

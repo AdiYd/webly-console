@@ -88,7 +88,7 @@ export function Navigation() {
     // User menu content
     const userMenuContent = (
       <>
-        <div className="p-4 border-b bg-base-100 border-base-200">
+        <div className="p-4 border-b bg-base-100/90 border-base-200">
           <div className="flex items-center gap-6">
             <div className="avatar">
               <div className="w-12 mask mask-squircle">
@@ -103,7 +103,7 @@ export function Navigation() {
           </div>
         </div>
 
-        <ul className="menu bg-base-100 p-4 gap-2">
+        <ul className="menu bg-base-100/90 p-4 gap-2">
           <li>
             <Link
               href="/profile"
@@ -150,7 +150,7 @@ export function Navigation() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="fixed inset-0 bg-black/10 backdrop-blur-sm z-40"
+                  className="fixed inset-0 bg-black/5 backdrop-blur-xl  z-40"
                   onClick={() => setIsUserMenuOpen(false)}
                 ></motion.div>
                 <motion.div
@@ -160,20 +160,22 @@ export function Navigation() {
                   transition={{
                     type: 'spring',
                     stiffness: 300,
-                    damping: 30,
+                    damping: 25,
                   }}
                   className="fixed inset-y-14 right-0 w-80 bg-base-100 shadow-lg z-50"
                 >
-                  <div className="flex justify-between bg-base-100 items-center p-4 border-b border-base-200">
-                    <h2 className="font-bold">Account</h2>
-                    <button
-                      className="btn btn-circle btn-sm btn-ghost"
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      <Icon icon="carbon:close" width={20} />
-                    </button>
+                  <div className="card card-blur overflow-hidden">
+                    <div className="flex justify-between bg-base-100/90 items-center p-4 border-b border-base-200">
+                      <h2 className="font-bold">Account</h2>
+                      <button
+                        className="btn btn-circle btn-sm btn-ghost"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <Icon icon="carbon:close" width={20} />
+                      </button>
+                    </div>
+                    {userMenuContent}
                   </div>
-                  {userMenuContent}
                 </motion.div>
               </div>
             ) : (

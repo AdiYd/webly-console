@@ -19,6 +19,7 @@ const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES];
 
 interface ChatInterfaceProps {
   initialMessages?: any[];
+  isMinimized?: boolean;
 }
 
 interface Attachment {
@@ -44,9 +45,58 @@ const exampleChat = [
       'I can help with a variety of tasks, including answering questions, providing information, and assisting with learning.',
     id: '3',
   },
+  {
+    role: 'user',
+    content: 'Can you show me an example?',
+    id: '4',
+  },
+  {
+    role: 'assistant',
+    content:
+      'Sure! I can provide examples of code, explanations, or even help with specific topics. Just let me know what you need!',
+    id: '5',
+  },
+  {
+    role: 'user',
+    content: "Great! Let's start with a coding question.",
+    id: '6',
+  },
+  {
+    role: 'assistant',
+    content: "Sounds good! Please provide your coding question, and I'll do my best to assist you.",
+    id: '7',
+  },
+  {
+    role: 'user',
+    content: 'Can you explain how to use React hooks?',
+    id: '8',
+  },
+  {
+    role: 'assistant',
+    content:
+      'React hooks are functions that let you use state and other React features without writing a class. Some common hooks include useState, useEffect, and useContext. Would you like to see an example?',
+    id: '9',
+  },
+  {
+    role: 'user',
+    content: 'Yes, please!',
+    id: '10',
+  },
+  {
+    role: 'assistant',
+    content:
+      "Here is a simple example using the useState hook:\n\n```javascript\nimport React, { useState } from 'react';\n\nfunction Counter() {\n  const [count, setCount] = useState(0);\n\n  return (\n    <div>\n      <p>You clicked {count} times</p>\n      <button onClick={() => setCount(count + 1)}>Click me</button>\n    </div>\n  );\n}\n```\n\nThis code creates a button that increments the count each time it is clicked.",
+    id: '11',
+  },
 ]; // We'll use the useChat hook's messages instead
 
-export default function ChatInterface({ initialMessages = exampleChat }: ChatInterfaceProps) {
+export default function ChatInterface({
+  initialMessages = exampleChat,
+  isMinimized = false,
+}: ChatInterfaceProps) {
+  // Maintain local error state for UI consistency with existing implementation
+  const [error, setError] = useState<string | null>(null);
+  const [update, setUpdate] = useState(false); // State to trigger re-render
   const {
     provider,
     model,
@@ -77,21 +127,29 @@ export default function ChatInterface({ initialMessages = exampleChat }: ChatInt
       temperature,
       systemPrompt,
     },
-    onResponse: response => {
+    onResponse: async response => {
       // Optional callback when response starts
       if (!response.ok) {
-        console.error('Chat API response error:', response.statusText);
+        // const message = await response.text();
+        // console.error('Chat API response error:', message);
+        // setError(message || 'An error occurred');
       }
+      if (textareaRef.current) {
+        textareaRef.current.focus(); // Focus back on textarea
+      }
+      setUpdate(prev => !prev); // Trigger re-render to update UI
     },
   });
 
-  // Maintain local error state for UI consistency with existing implementation
-  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setUpdate(prev => !prev);
+  }, [isMinimized]);
+
   // Update local error state when chat hook reports an error
   useEffect(() => {
     if (chatError) {
-      console.error('Chat error:', chatError);
-      setError(chatError.message || 'An error occurred');
+      console.log('Chat error:', chatError.message);
+      setError(JSON.parse(chatError.message).error || 'An error occurred');
     } else {
       setError(null);
     }
@@ -247,8 +305,11 @@ export default function ChatInterface({ initialMessages = exampleChat }: ChatInt
         const codeContent = language ? code.substring(language.length).trim() : code;
 
         return (
-          <pre key={i} className="bg-base-300 rounded-md p-3 overflow-x-auto text-sm my-2">
-            {language && <div className="text-xs opacity-70 mb-1">{language}</div>}
+          <pre
+            key={i}
+            className="text-neutral-content card !bg-zinc-800 p-3 overflow-x-auto text-sm my-2"
+          >
+            {language && <div className="text-xs opacity-70 mb-1">$ {language}</div>}
             <code>{codeContent}</code>
           </pre>
         );
@@ -256,7 +317,7 @@ export default function ChatInterface({ initialMessages = exampleChat }: ChatInt
       // Check if this part is an inline code snippet
       else if (part.startsWith('`') && part.endsWith('`')) {
         return (
-          <code key={i} className="bg-base-300 px-1 rounded">
+          <code key={i} className="text-neutral-content card !bg-zinc-800 px-1 rounded">
             {part.substring(1, part.length - 1)}
           </code>
         );
@@ -309,9 +370,9 @@ export default function ChatInterface({ initialMessages = exampleChat }: ChatInt
   };
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col justify-between h-full w-full">
       {/* Header with model selection */}
-      <div className="flex items-center justify-between p-3 border-transparent border-[1px] border-b-zinc-400/20 ">
+      <div className="absolute gap-4 w-full z-30 backdrop-blur-lg flex items-center overflow-x-auto justify-between py-2 px-3 border-transparent border-[1px] border-b-zinc-400/20 ">
         {/* 3 circles for Apple browser reference */}
         <div className="flex items-center gap-1 z-10">
           <div className="w-3 h-3 rounded-full bg-red-500* btn min-h-2 btn-xs btn-primary btn-circle "></div>
@@ -354,9 +415,13 @@ export default function ChatInterface({ initialMessages = exampleChat }: ChatInt
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto max-h-[350px] p-4 md:px-6 space-y-2">
+      <div
+        className={`flex-1 mt-8 overflow-y-auto max-h-[fill-available] p-4 md:px-6 ${
+          isMinimized ? '!px-3' : ''
+        } space-y-2`}
+      >
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-base-content/60">
+          <div className="flex flex-col pt-12 items-center justify-center text-base-content/60">
             <Icon icon="carbon:chat" className="w-16 h-16 mb-4" />
             <p className="text-lg font-medium">Start a conversation with the AI</p>
             <p className="text-sm">
@@ -367,29 +432,35 @@ export default function ChatInterface({ initialMessages = exampleChat }: ChatInt
           messages.map((message, index) => (
             <div
               key={message.id || index}
-              className={`chat ${message.role === 'user' ? 'chat-end' : 'chat-start'}`}
+              className={`chat ${index === 0 ? 'mt-6' : ''} ${
+                message.role === 'user' ? 'chat-end' : 'chat-start'
+              }`}
             >
-              <div className="chat-image avatar online">
-                <div className="w-8 rounded-full bg-base-300">
-                  {message.role === 'user' ? (
-                    <img
-                      className="rounded-full"
-                      src={userImage}
-                      alt={userName || 'User profile'}
-                    />
-                  ) : (
-                    <Icon icon={'carbon:bot'} className="w-6 h-6 m-2" />
-                  )}
-                </div>
-              </div>
-              <div className="chat-header mb-1">
-                {message.role === 'user' ? 'You' : 'AI Assistant'}
-              </div>
+              {!isMinimized && (
+                <>
+                  <div className="chat-image avatar online">
+                    <div className="w-8 rounded-full bg-base-300">
+                      {message.role === 'user' ? (
+                        <img
+                          className="rounded-full"
+                          src={userImage}
+                          alt={userName || 'User profile'}
+                        />
+                      ) : (
+                        <Icon icon={'carbon:bot'} className="w-6 h-6 m-2" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="chat-header mb-1">
+                    {message.role === 'user' ? 'You' : 'AI Agent'}
+                  </div>
+                </>
+              )}
               <div
-                className={`chat-bubble ${
+                className={`${
                   message.role === 'user'
-                    ? 'chat-bubble-primary text-primary-content'
-                    : 'chat-bubble-accent text-accent-content'
+                    ? 'chat-bubble-primary  text-primary-content chat-bubble '
+                    : `${isMinimized ? 'text-base-content/90' : 'chat-bubble chat-bubble-accent'}`
                 }`}
               >
                 {/* Handle different message formats (string or parts array) */}
@@ -464,15 +535,19 @@ export default function ChatInterface({ initialMessages = exampleChat }: ChatInt
       )}
 
       {/* Input area */}
-      <form onSubmit={handleChatSubmit} className="p-4 max-sm:p-2 pt-0 ">
+      <form
+        onSubmit={handleChatSubmit}
+        className={`${isMinimized ? 'p-2' : 'p-4'} max-sm:p-2 pt-0 `}
+      >
         <div
-          className={`card flex flex-col rounded-xl border ${
+          className={`card hover:!border-base-content/50 border-[0.9px] !bg-base-200 flex flex-col rounded-xl ${
             isDragging ? 'border-primary border-dashed' : 'border-base-300'
           }`}
           onDragEnter={handleDragEnter}
           onDragOver={e => e.preventDefault()}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          onClick={() => textareaRef.current?.focus()}
         >
           <div className="flex justify-between items-center min-h-[60px] max-h-[200px] p-3">
             <textarea

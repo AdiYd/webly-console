@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { signIn, getProviders } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/ui/icon';
 import Link from 'next/link';
 import { clientFirebase } from '@/lib/firebase/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { setDoc, doc } from 'firebase/firestore';
 
 export default function SignUp() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const errorMessage = searchParams.get('error');
 
@@ -19,52 +20,8 @@ export default function SignUp() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [firebaseStatus, setFirebaseStatus] = useState<string>('Checking Firebase status...');
 
-  // Check Firebase configuration on mount
-  useEffect(() => {
-    console.log('Checking Firebase initialization status...');
-    try {
-      // Check clientFirebase initialization status
-      const fbStatus = {
-        appInitialized: !!clientFirebase.app,
-        authInitialized: !!clientFirebase.auth,
-        dbInitialized: !!clientFirebase.db,
-        storageInitialized: !!clientFirebase.storage,
-        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.substring(0, 5) + '...',
-        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      };
-
-      console.log('Firebase client status:', fbStatus);
-      setFirebaseStatus(
-        fbStatus.appInitialized && fbStatus.authInitialized
-          ? 'Firebase initialized successfully'
-          : 'Firebase initialization issues detected'
-      );
-    } catch (err) {
-      console.error('Error checking Firebase status:', err);
-      setFirebaseStatus('Error checking Firebase status');
-    }
-
-    // Check available auth providers
-    const loadProviders = async () => {
-      try {
-        const providers = await getProviders();
-        console.log('Available auth providers:', providers);
-        if (!providers?.google) {
-          console.warn('Google provider not configured properly');
-          setError('Google sign-in is not properly configured');
-        }
-      } catch (err) {
-        console.error('Error loading auth providers:', err);
-      }
-    };
-
-    // loadProviders();
-  }, []);
-
-  // Handle URL error parameters
+  // Handle URL error parameters with enhanced Google-specific errors
   useEffect(() => {
     if (errorMessage) {
       console.error('Auth error detected on signup page:', errorMessage);
@@ -80,6 +37,18 @@ export default function SignUp() {
         case 'OAuthCallback':
           setError('There was a problem with Google sign-in. Please try again.');
           break;
+        case 'GoogleSignUpFailed':
+          setError('Failed to sign up with Google. Please try again or use email signup.');
+          break;
+        case 'EmailAlreadyExists':
+          setError('An account with this email already exists. Please sign in instead.');
+          break;
+        case 'auth/weak-password':
+          setError('The password is too weak. Please choose a stronger password.');
+          break;
+        case 'auth/invalid-email':
+          setError('The email address is not valid. Please enter a valid email.');
+          break;
         default:
           setError(`Authentication error: ${errorMessage}. Please try again.`);
       }
@@ -91,51 +60,89 @@ export default function SignUp() {
     setError('');
     setSuccessMessage('');
 
+    // Verify passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      return;
+    }
+    // Verify email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
       return;
     }
 
     setIsLoading(true);
 
-    // ...existing code...
-    // Simulate a successful registration
-    setTimeout(() => {
+    try {
+      if (!clientFirebase.app || !clientFirebase.auth || !clientFirebase.db) {
+        throw new Error('Firebase is not properly initialized');
+      }
+
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        clientFirebase.auth,
+        email,
+        password
+      );
+
+      const user = userCredential.user;
+
+      // Store additional user data in Firestore
+      await setDoc(doc(clientFirebase.db, 'users', user.email || user.uid), {
+        name,
+        email,
+        role: 'Trial',
+        image: '',
+        createdAt: new Date().toISOString(),
+        provider: 'credentials',
+      });
+
       setSuccessMessage('Account created successfully! You can now sign in.');
       setIsLoading(false);
-      // Redirect to sign in page after 2 seconds
-      setTimeout(() => {
-        router.push('/auth/signin');
-      }, 2000);
-    }, 1500);
+
+      // Signing in the user automatically after signup
+      await signIn('credentials', {
+        email,
+        password,
+        redirect: true,
+        redirectTo: '/',
+        rememberMe: false,
+        callbackUrl: '/',
+      });
+    } catch (error) {
+      setIsLoading(false);
+      if (error instanceof Error) {
+        // Handle specific Firebase errors
+        if (error.message.includes('auth/email-already-in-use')) {
+          setError('An account with this email already exists. Please sign in instead.');
+        } else {
+          setError(`Error creating account: ${error.message}`);
+        }
+      } else {
+        setError('An unknown error occurred. Please try again.');
+      }
+      console.error('Signup error:', error);
+    }
   };
 
   const handleGoogleSignUp = async () => {
     setError('');
     setIsLoading(true);
 
-    const callbackUrl = '/';
-    console.log('Initiating Google sign-up process...');
-    console.log('Using callback URL:', callbackUrl);
-
     try {
       if (!clientFirebase.app || !clientFirebase.auth) {
         throw new Error('Firebase is not properly initialized');
       }
 
-      const signInParams = {
-        callbackUrl,
-        redirect: true,
-      };
-
-      console.log('Google sign-in parameters:', signInParams);
-
       setTimeout(async () => {
         try {
-          await signIn('google', signInParams);
+          await signIn('google', {
+            callbackUrl: '/',
+          });
         } catch (err) {
           console.error('Failed during Google sign-in process:', err);
-          setError('Failed to complete Google sign-in process');
+          setError('Failed to complete Google sign-in process. Please try again later.');
           setIsLoading(false);
         }
       }, 100);
@@ -165,7 +172,7 @@ export default function SignUp() {
             type="button"
             className="btn btn-outline w-full flex items-center justify-center gap-2"
             onClick={handleGoogleSignUp}
-            disabled={isLoading || firebaseStatus.includes('issues')}
+            disabled={isLoading}
           >
             <Icon icon="flat-color-icons:google" width="20" height="20" />
             <span>Sign up with Google</span>
