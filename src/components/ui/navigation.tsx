@@ -266,15 +266,12 @@ export function Navigation() {
         </Link>
       </div>
       <div className="navbar-center hidden lg:flex">
-        <ul className="flex px-1 gap-2">
+        <ul className="flex px-1 gap-4">
           <li>
             <NavLink href="/">Home</NavLink>
           </li>
           <li>
-            <NavLink href="/chat">AI Chat</NavLink>
-          </li>
-          <li>
-            <NavLink href="/exercises">Math Exercises</NavLink>
+            <NavLink href="/chat">AI Agent</NavLink>
           </li>
         </ul>
       </div>

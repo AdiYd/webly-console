@@ -372,7 +372,7 @@ export default function ChatInterface({
   return (
     <div className="flex flex-col justify-between h-full w-full">
       {/* Header with model selection */}
-      <div className="absolute gap-4 w-full z-30 backdrop-blur-lg flex items-center overflow-x-auto justify-between py-2 px-3 border-transparent border-[1px] border-b-zinc-400/20 ">
+      <div className="absolute gap-4 w-full z-30 backdrop-blur-lg flex items-center overflow-x-auto justify-between py-1 px-3 border-transparent border-[1px] border-b-zinc-400/20 ">
         {/* 3 circles for Apple browser reference */}
         <div className="flex items-center gap-1 z-10">
           <div className="w-3 h-3 rounded-full bg-red-500* btn min-h-2 btn-xs btn-primary btn-circle "></div>
@@ -556,7 +556,8 @@ export default function ChatInterface({
               onChange={handleInputChange}
               placeholder="Type your message or drop files here..."
               className="w-full resize-none bg-transparent focus:outline-none mr-2 overflow-y-auto"
-              rows={1}
+              // rows={1}
+              maxLength={2000}
               disabled={isLoading}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -621,7 +622,7 @@ export default function ChatInterface({
               </button>
             </div>
             <span className="text-xs text-base-content/60">
-              Max file size for trial: {MAX_FILE_SIZE_MB}MB
+              Max size for trial: {MAX_FILE_SIZE_MB}MB, ({2000 - input.length} chars left)
             </span>
           </div>
         </div>
