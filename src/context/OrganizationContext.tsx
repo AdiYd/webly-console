@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Theme } from '@/components/ui/theme-provider';
+import { Theme, useTheme } from '@/components/ui/theme-provider';
 
 export type AIProvider = 'openai' | 'anthropic' | 'gemini' | 'grok';
 
@@ -338,6 +338,7 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const { theme, setTheme } = useTheme();
 
   const { status } = useSession();
 
@@ -349,6 +350,9 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       currentOrganization.ai_params.provider
     ) {
       setIcon(availableProvidersData[currentOrganization.ai_params.provider]?.icon || '');
+    }
+    if (currentOrganization.settings.theme !== theme) {
+      setTheme(currentOrganization.settings.theme);
     }
   }, [currentOrganization]);
 

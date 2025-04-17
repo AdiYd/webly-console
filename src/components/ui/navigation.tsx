@@ -8,6 +8,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { Icon } from '@iconify/react';
 import { useBreakpoint } from '@/hooks/use-screen';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useOrganization } from '@/context/OrganizationContext';
 
 interface NavLinkProps {
   href: string;
@@ -27,6 +28,26 @@ const sessionExample = {
     },
   },
 };
+
+// Placeholder organization data and functions (replace with actual context implementation)
+const placeholderOrganizations = [
+  { id: 'org1', name: 'Acme Corp' },
+  { id: 'org2', name: 'Beta Inc' },
+  { id: 'org3', name: 'Gamma LLC' },
+];
+const usePlaceholderOrganization = () => {
+  const [current, setCurrent] = useState(placeholderOrganizations[0]);
+  return {
+    currentOrganization: current,
+    organizations: placeholderOrganizations,
+    switchOrganization: (id: string) => {
+      const newOrg = placeholderOrganizations.find(org => org.id === id);
+      if (newOrg) setCurrent(newOrg);
+      console.log(`Switched to organization: ${newOrg?.name}`);
+    },
+  };
+};
+// End Placeholder
 
 function NavLink({ href, children, className }: NavLinkProps) {
   const pathname = usePathname();
@@ -48,6 +69,25 @@ export function Navigation() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const session = useSession();
   const { isDesktop } = useBreakpoint();
+  // Use placeholder hook for now, replace with actual useOrganization() when context is ready
+  const { currentOrganization, organizations, switchOrganization } = useOrganization();
+  // const { currentOrganization, organizations, switchOrganization } = useOrganization();
+
+  // Function to get badge color based on organization ID or index
+  const getOrgBadgeColor = (orgId: string): string => {
+    const colors = [
+      'badge-primary',
+      'badge-secondary',
+      'badge-accent',
+      'badge-info',
+      'badge-success',
+      'badge-warning',
+      'badge-error',
+      'badge-neutral',
+    ];
+    const index = organizations.findIndex(org => org.id === orgId);
+    return colors[index % colors.length] || 'badge-neutral'; // Fallback to neutral
+  };
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -69,8 +109,72 @@ export function Navigation() {
 
   let authElement = null;
   let avatar = null;
+  let organizationSwitcher = null; // Initialize switcher element
 
-  if (session.status === 'authenticated' && session.data?.user?.image) {
+  if (session.status === 'authenticated') {
+    // --- Organization Switcher Logic ---
+    if (isDesktop && currentOrganization && organizations && organizations.length > 0) {
+      if (organizations.length > 1) {
+        // Dropdown for multiple organizations
+        organizationSwitcher = (
+          <div className="dropdown dropdown-hover dropdown-start ml-4">
+            <div
+              tabIndex={0}
+              role="button"
+              className={`badge ${getOrgBadgeColor(
+                currentOrganization.id
+              )} badge-md cursor-pointer flex items-center gap-1 p-3`}
+            >
+              <Icon icon="carbon:building" />
+              <span className="font-semibold">{currentOrganization.name}</span>
+              <Icon icon="carbon:chevron-down" className="ml-1" />
+            </div>
+            <ul
+              tabIndex={0}
+              className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2"
+            >
+              {organizations.map(org => (
+                <li key={org.id}>
+                  <button
+                    onClick={() => {
+                      switchOrganization(org.id);
+                      return true;
+                    }}
+                    className={`btn btn-sm btn-ghost justify-start ${
+                      org.id === currentOrganization.id ? 'btn-active' : ''
+                    }`}
+                  >
+                    <span className={`badge ${getOrgBadgeColor(org.id)} badge-xs mr-2`}></span>
+                    {org.name}
+                  </button>
+                </li>
+              ))}
+              {/* Optional: Add link to manage organizations */}
+              <div className="divider my-1"></div>
+              <li>
+                <Link href="/account" className="btn btn-sm btn-ghost justify-start text-info">
+                  <Icon icon="carbon:settings-adjust" /> Manage Orgs
+                </Link>
+              </li>
+            </ul>
+          </div>
+        );
+      } else {
+        // Static badge if only one organization
+        organizationSwitcher = (
+          <div
+            className={`badge ${getOrgBadgeColor(
+              currentOrganization.id
+            )} badge-md ml-4 flex items-center gap-1 p-3`}
+          >
+            <Icon icon="carbon:building" />
+            <span className="font-semibold">{currentOrganization.name}</span>
+          </div>
+        );
+      }
+    }
+    // --- End Organization Switcher Logic ---
+
     // Use sessionExample data for demonstration
     const userData = session.data.user;
 
@@ -106,12 +210,12 @@ export function Navigation() {
         <ul className="menu bg-base-100/90 p-4 gap-2">
           <li>
             <Link
-              href="/profile"
+              href="/account"
               className="flex items-center gap-2"
               onClick={() => setIsUserMenuOpen(false)}
             >
               <Icon icon="carbon:user-avatar" />
-              Profile
+              Account
             </Link>
           </li>
           {/* <li>
@@ -264,6 +368,10 @@ export function Navigation() {
         <Link href="/" className="text-lg px-2">
           Webly AI
         </Link>
+        {/* Organization Switcher (Desktop Only) */}
+        <div className="hidden lg:flex items-center">
+          {session.status === 'authenticated' && organizationSwitcher}
+        </div>
       </div>
       <div className="navbar-center hidden lg:flex">
         <ul className="flex px-1 gap-4">

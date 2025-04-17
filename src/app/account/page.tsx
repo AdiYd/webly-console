@@ -657,8 +657,8 @@ export default function ProfilePage() {
           />
 
           <div className="dropdown dropdown-end">
-            <div tabIndex={0} role="button" className="btn btn-sm btn-ghost btn-circle">
-              <Icon icon="mdi:dots-vertical" className="w-5 h-5" />
+            <div tabIndex={0} role="button" className="btn btn-sm flex btn-ghost btn-circle">
+              <Icon icon="mdi:dots-vertical" className="" />
             </div>
             <ul
               tabIndex={0}
