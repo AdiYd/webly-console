@@ -12,14 +12,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp | null = null;
-let auth: Auth | null = null;
-let db: Firestore | null = null;
-let storage: FirebaseStorage | null = null;
-let initError: string | null = null;
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+let storage: FirebaseStorage;
+let initError: string;
 
 try {
-  if (typeof window !== 'undefined') {
+  if (true) {
     // Ensure this only runs client-side
     if (getApps().length === 0) {
       if (!firebaseConfig.apiKey || !firebaseConfig.authDomain) {
@@ -39,10 +39,10 @@ try {
 } catch (error) {
   console.error('[Firebase Client] Initialization failed:', error);
   initError = error instanceof Error ? error.message : String(error);
-  app = null;
-  auth = null;
-  db = null;
-  storage = null;
+  app = null as any;
+  auth = null as any;
+  db = null as any;
+  storage = null as any;
 }
 
 export { app, auth, db, storage, initError };

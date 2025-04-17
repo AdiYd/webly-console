@@ -45,20 +45,30 @@ interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   isDarkTheme: boolean;
+  isLoading: boolean;
 }
 
 const initialState: ThemeContextType = {
   theme: 'system',
   setTheme: () => null,
   isDarkTheme: false,
+  isLoading: true,
 };
 
 const ThemeContext = createContext<ThemeContextType>(initialState);
 
 // List of themes considered "dark"
-const darkThemes = [
-  'dark', 'synthwave', 'halloween', 'forest', 'black', 'luxury', 
-  'dracula', 'business', 'night', 'coffee'
+export const darkThemes = [
+  'dark',
+  'synthwave',
+  'halloween',
+  'forest',
+  'black',
+  'luxury',
+  'dracula',
+  'business',
+  'night',
+  'coffee',
 ];
 
 export function ThemeProvider({
@@ -69,23 +79,24 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(defaultTheme);
   const [isDarkTheme, setIsDarkTheme] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem(storageKey) as Theme | null;
-    
     if (savedTheme) {
       setTheme(savedTheme);
     }
+    setIsLoading(false);
   }, [storageKey]);
 
   useEffect(() => {
     const root = document.documentElement;
-    
+
     if (theme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light';
-      
+
       root.setAttribute('data-theme', systemTheme);
       setIsDarkTheme(systemTheme === 'dark');
       return;
@@ -101,6 +112,7 @@ export function ThemeProvider({
       localStorage.setItem(storageKey, theme);
       setTheme(theme);
     },
+    isLoading,
     isDarkTheme,
   };
 

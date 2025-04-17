@@ -1,21 +1,30 @@
-// export { auth as middleware } from '@/auth';
-// filepath: src/middleware.ts
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth'; // Adjust path if needed
+import { auth } from '@/auth';
+
+// Define routes that require authentication
+const protectedRoutes = ['/dashboard', '/settings', '/profile', '/projects'];
+
+// Define routes that are only for unauthenticated users
+const authOnlyRoutes = ['/auth/signin', '/auth/signup', '/auth/forgot-password'];
 
 export async function middleware(request: NextResponse) {
   const session = await auth();
-  const pathname = request.url;
-  console.log('Middleware session:', session);
-  console.log('Middleware pathname:', pathname);
+  const url = new URL(request.url);
+  const pathname = url.pathname;
 
+  // Get authentication status
   const isAuthenticated = !!session?.user;
-  const isAuthPage = pathname.startsWith('/auth');
 
-  // If user is authenticated and tries to access an auth page (signin, signup, etc.)
-  if (isAuthenticated && isAuthPage) {
+  // If user is authenticated and tries to access an auth-only page
+  if (isAuthenticated && authOnlyRoutes.includes(pathname)) {
     // Redirect them to the dashboard or homepage
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // If user is not authenticated and tries to access a protected route
+  if (!isAuthenticated && protectedRoutes.includes(pathname)) {
+    // Redirect them to the signin page
+    return NextResponse.redirect(new URL('/auth/signin', request.url));
   }
 
   // Allow the request to proceed if no redirection is needed

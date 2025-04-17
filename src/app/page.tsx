@@ -5,6 +5,9 @@ import { Icon } from '@/components/ui/icon';
 import { useAI } from '@/context/AIContext';
 import FireDots from '@/components/ui/fireFlies/firedots';
 import { useTheme } from '@/components/ui/theme-provider';
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useOrganization } from '@/context/OrganizationContext';
 
 interface FeatureCardProps {
   title: string;
@@ -42,13 +45,26 @@ function FeatureCard({
 }
 
 export default function Home() {
-  const { provider, model } = useAI();
-  const { theme, isDarkTheme } = useTheme();
-  // console.log('Provider:', provider, model);
+  const [isMounted, setIsMounted] = useState(false);
+  const { provider, model, agents, systemPrompt } = useOrganization();
+  const { theme, isDarkTheme, isLoading } = useTheme();
+  const session = useSession();
+  console.log('AI Provider:', { provider, model, agents, systemPrompt });
+  console.log('Current Theme:', theme, 'Is Dark Theme:', isDarkTheme);
+  console.log('Session:', session);
+  useEffect(() => {
+    // Set mounted to true after the component has mounted
+    setIsMounted(true);
+  }, []);
+
+  // Prevent rendering on server-side to avoid hydration issues
+  if (!isMounted || isLoading) {
+    return null;
+  }
 
   return (
     <div className="">
-      {(isDarkTheme || theme === 'aqua') && <FireDots particleNum={30} particleBaseSize={20} />}
+      {(isDarkTheme || theme === 'aqua') && <FireDots particleNum={30} particleBaseSize={17} />}
       {/* Hero Section */}
       <section className="hero py-20 ">
         <div className="hero-content text-center">

@@ -3,7 +3,8 @@ import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { clientFirebase } from '@/lib/firebase/firebase';
+// Updated imports to use the new file structure
+import { auth as clientAuth, db as clientDb } from '@/lib/firebase/firebase-client';
 
 declare module 'next-auth' {
   interface Session {
@@ -22,7 +23,7 @@ interface User {
   name: string;
   email: string;
   image: string;
-  rememberMe: string;
+  rememberMe: string | boolean;
   role?: string;
   id?: string;
 }
@@ -57,7 +58,7 @@ const authLog = {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // Enable debug mode in development for detailed logs
-  debug: process.env.NODE_ENV !== 'production',
+  // debug: process.env.NODE_ENV !== 'production',
 
   // Configure authentication providers
   providers: [
@@ -65,25 +66,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       authorize: async (credentials: any) => {
         authLog.info('Processing Firebase credentials authorization', { email: credentials.email });
-
         try {
           // Check that Firebase is initialized
-          if (!clientFirebase.auth) {
+          if (!clientAuth) {
             throw new Error('Firebase Auth is not initialized');
+          }
+          if (credentials.providerType === 'google' && credentials.idToken) {
+            authLog.info('Processing Google ID token authorization');
+            // Verify the ID token using Firebase Admin SDK
+
+            if (!credentials.email) {
+              throw new Error('No email found in Google ID token.');
+            }
+
+            return {
+              id: credentials.id,
+              name: credentials.name,
+              email: credentials.email,
+              role: 'Trial',
+              image: credentials.image,
+              rememberMe: false,
+            };
           }
 
           // Authenticate with Firebase
           const userCredential = await signInWithEmailAndPassword(
-            clientFirebase.auth,
+            clientAuth,
             credentials.email,
             credentials.password
           );
 
           const firebaseUser = userCredential.user;
           // Get additional user data from Firestore
-          if (clientFirebase.db) {
+          if (clientDb) {
             const userDoc = await getDoc(
-              doc(clientFirebase.db, 'users', firebaseUser.email || firebaseUser.uid)
+              doc(clientDb, 'users', firebaseUser.email || firebaseUser.uid)
             );
             if (userDoc.exists()) {
               // Return combined data from Firebase Auth and Firestore
@@ -102,7 +119,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return {
             id: firebaseUser.uid,
             email: firebaseUser.email,
-            name: firebaseUser.displayName || '',
+            name: credentials.name || firebaseUser.displayName || '',
             image: demoUser.image,
             role: 'Trial',
             rememberMe: credentials.rememberMe || false,
@@ -113,8 +130,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       },
     }),
-
-    // Update Google provider to link with Firebase
+    // Google provider for Google sign-in
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
@@ -124,42 +140,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           access_type: 'offline',
           response_type: 'code',
         },
-      },
-      async profile(profile, tokens) {
-        // authLog.info('Google profile received', { email: profile.email, tokens, profile });
-
-        try {
-          const clientProfile = {
-            id: profile.sub,
-            name: profile.name || '',
-            email: profile.email || '',
-            image: profile.picture || '',
-            role: 'Trial',
-            rememberMe: false,
-          };
-
-          // Check if user exists in Firestore
-          if (clientFirebase.db) {
-            const userDoc = await getDoc(doc(clientFirebase.db, 'users', profile.email));
-            if (userDoc.exists()) {
-              authLog.success('User found in Firestore', { email: profile.email });
-              const userData = userDoc.data();
-              clientProfile.role = userData.role || 'Trial';
-              clientProfile.rememberMe = userData.rememberMe || false;
-            } else {
-              await setDoc(doc(clientFirebase.db, 'users', profile.email), {
-                ...clientProfile,
-                createdAt: new Date().toISOString(),
-                provider: 'google',
-              });
-            }
-          }
-
-          return clientProfile;
-        } catch (error) {
-          authLog.error('Error processing Google profile', error);
-          throw error;
-        }
       },
     }),
   ],
@@ -176,7 +156,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     // JWT callback - customize the token when created or updated
     async jwt({ token, user, account, trigger }) {
-      authLog.info('Processing JWT', { trigger, user, token });
+      // authLog.info('Processing JWT', { trigger, user, token });
 
       // First time token is created (sign in)
       if (user) {
@@ -188,7 +168,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.name = (user as User).name || user.name;
 
         // Set session duration based on rememberMe flag
-        if ((user as User).rememberMe !== 'false') {
+        if ((user as User).rememberMe === 'true' || (user as User).rememberMe === true) {
           token.maxAge = RememberMe_Period;
           authLog.info('Extended session created (30 days)');
         } else {
@@ -239,7 +219,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       }
       session.status = 'authenticated';
-      authLog.success('Session data:', session);
+      // authLog.success('Session data:', session);
       return session;
     },
 

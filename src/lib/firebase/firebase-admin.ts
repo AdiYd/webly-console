@@ -37,8 +37,26 @@ function initializeAdmin(): AdminFirebase {
   }
 
   try {
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+    // Validate private key format
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error('FIREBASE_PRIVATE_KEY environment variable is not set');
+    }
+
+    // Handle various PEM formatting issues
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    // Remove any surrounding quotes that might have been added in the .env file
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
+    }
+
+    // Validate basic PEM format structure
+    if (!privateKey.includes('BEGIN PRIVATE KEY') || !privateKey.includes('END PRIVATE KEY')) {
+      throw new Error('Invalid private key format. Must be a valid PEM-formatted private key');
+    }
+
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL) {
       throw new Error('Missing Firebase Admin credentials in environment variables');
     }
 
@@ -61,7 +79,7 @@ function initializeAdmin(): AdminFirebase {
     return adminInstance;
   } catch (error) {
     console.error('[Firebase Admin] Initialization failed:', error);
-    // Depending on your error handling, you might want to re-throw or handle differently
+    // Provide a detailed error message but don't crash the application
     throw new Error(
       `Firebase Admin initialization failed: ${
         error instanceof Error ? error.message : String(error)
@@ -70,7 +88,35 @@ function initializeAdmin(): AdminFirebase {
   }
 }
 
-// Export a getter function to ensure initialization happens lazily on first use server-side
+// Wrapped in a try-catch to prevent application crashes
 export function getAdminFirebase(): AdminFirebase {
-  return initializeAdmin();
+  try {
+    return initializeAdmin();
+  } catch (error) {
+    console.error('[Firebase Admin] Could not initialize:', error);
+    // Return a mock object that logs errors when methods are called
+    // This allows the application to continue running even if Firebase Admin isn't properly initialized
+    const errorHandler =
+      (method: string) =>
+      (...args: any[]) => {
+        console.error(
+          `[Firebase Admin] Method '${method}' called but Firebase Admin is not initialized`
+        );
+        throw new Error(`Firebase Admin is not initialized. Cannot call '${method}'`);
+      };
+
+    const mockFirestore = {
+      collection: errorHandler('collection'),
+      doc: errorHandler('doc'),
+      getDoc: errorHandler('getDoc'),
+      setDoc: errorHandler('setDoc'),
+    } as unknown as Firestore;
+
+    return {
+      app: {} as App,
+      db: mockFirestore,
+      auth: {} as Auth,
+      storage: {} as Storage,
+    };
+  }
 }

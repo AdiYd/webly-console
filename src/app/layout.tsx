@@ -3,6 +3,7 @@ import { Inter, Roboto } from 'next/font/google';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { auth } from '@/auth'; // Import auth to get session
 import { AIContextProvider } from '@/context/AIContext';
+import { OrganizationContextProvider } from '@/context/OrganizationContext';
 
 import './globals.css';
 import Footer from '@/components/layout/footer';
@@ -37,15 +38,15 @@ export default async function RootLayout({
         className={`${robotoSans.className} ${inter.className} font-sans relative max-w-full overflow-x-hidden min-h-screen flex flex-col`}
       >
         <SessionProvider session={session}>
-          <ThemeProvider defaultTheme="dark" storageKey="theme">
-            <AIContextProvider>
+          <ThemeProvider defaultTheme="system" storageKey="theme">
+            <OrganizationContextProvider>
               <BlurDecoratives />
               <Header />
               <main className="flex-1 z-10 mt-12 mb-18 h-full min-h-[fill-available] flex flex-col">
                 {children}
               </main>
               <Footer />
-            </AIContextProvider>
+            </OrganizationContextProvider>
           </ThemeProvider>
         </SessionProvider>
       </body>

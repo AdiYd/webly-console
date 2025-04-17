@@ -5,6 +5,7 @@ import { useChat } from '@ai-sdk/react'; // Import useChat hook
 import { Icon } from '@iconify/react';
 import { useSession } from 'next-auth/react';
 import { useAI, AIProvider } from '@/context/AIContext';
+import { useOrganization } from '@/context/OrganizationContext';
 
 // File validation constants
 const MAX_FILE_SIZE_MB = 20;
@@ -104,9 +105,10 @@ export default function ChatInterface({
     temperature,
     systemPrompt,
     availableProviders,
+    agents,
     setProvider,
     setModel,
-  } = useAI();
+  } = useOrganization();
 
   // Use the useChat hook for message handling
   const {
@@ -159,7 +161,7 @@ export default function ChatInterface({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-  const { data: session } = useSession();
+  const { data: session, status: authStatus } = useSession();
   const userImage = session?.user?.image || 'https://i.pravatar.cc/150?img=3';
   const userName = session?.user?.name || 'User';
 
@@ -168,6 +170,7 @@ export default function ChatInterface({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isLoading = status === 'submitted' || status === 'streaming';
+  const isAuth = authStatus === 'authenticated';
   // Scroll to bottom of messages when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -380,6 +383,12 @@ export default function ChatInterface({
           <div className="w-3 h-3 rounded-full bg-green-500* btn min-h-2 btn-xs btn-accent btn-circle"></div>
         </div>
         <div className="flex items-center gap-3">
+          {isAuth &&
+            agents.map((agent, index) => (
+              <div key={index} className="agent-item">
+                {agent.name}
+              </div>
+            ))}
           <div className="flex items-center gap-3">
             <Icon icon={icon} className="w-5 h-5" />
             <select

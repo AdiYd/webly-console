@@ -6,7 +6,7 @@ import { Icon } from '@iconify/react';
 import { useBreakpoint } from '@/hooks/use-screen';
 
 // Theme categories for better organization
-const themeCategories = {
+export const themeCategories = {
   base: ['light', 'dark', 'system'],
   colorful: ['cupcake', 'bumblebee', 'emerald', 'corporate', 'synthwave', 'retro', 'cyberpunk'],
   seasonal: ['valentine', 'halloween', 'autumn', 'winter'],

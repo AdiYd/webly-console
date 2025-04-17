@@ -111,7 +111,7 @@ export default function AuthError() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 bg-base-200 p-8 shadow-lg rounded-xl">
+      <div className="w-full max-w-md z-10 space-y-8 card p-8 max-sm:px-5 my-8 shadow-lg">
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div

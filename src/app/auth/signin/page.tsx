@@ -6,6 +6,9 @@ import { Icon } from '@/components/ui/icon';
 import Link from 'next/link';
 import { clientFirebase } from '@/lib/firebase/firebase';
 import { signIn } from 'next-auth/react';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { db, auth } from '@/lib/firebase/firebase-client';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function SignIn() {
   const router = useRouter();
@@ -135,29 +138,66 @@ export default function SignIn() {
   const handleGoogleSignIn = async () => {
     setError('');
     setIsLoading(true);
-    console.log('Initiating Google sign-in process...');
-    console.log('Callback URL:', callbackUrl);
 
     try {
-      // Show a toast notification that we're redirecting to Google
-      // You can use a toast library or implement your own toast component
-      console.log('Redirecting to Google authentication...');
+      if (!db || !auth) {
+        throw new Error('Somwething went wrong. Please try again later.');
+      }
 
-      // Using the nextAuthSignIn function for Google authentication
-      await signIn('google', {
-        callbackUrl: callbackUrl || '/',
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+
+      const user = result.user;
+      console.log('Google client: ', user);
+      // Check if the user already exists in Firestore
+      const userDocRef = doc(db, 'users', user.email || user.uid);
+
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, 'users', user.email || user.uid), {
+          name: user.displayName,
+          email: user.email,
+          role: 'Trial',
+          image: user.photoURL,
+          createdAt: new Date().toISOString(),
+          provider: 'google',
+        });
+      }
+      // Get the Firebase ID token
+      const idToken = await user.getIdToken();
+
+      // Sign in to NextAuth using the credentials provider with the ID token
+      console.log('Attempting NextAuth sign-in with Firebase ID token');
+      const signInResponse = await signIn('credentials', {
+        idToken: idToken,
+        providerType: 'google',
+        id: user.uid,
+        name: user.displayName,
+        email: user.email,
+        role: 'Trial',
+        image: user.photoURL,
+        callbackUrl: '/',
       });
-      // The code below won't execute due to the redirect
-    } catch (err) {
-      console.error('Google sign-in error:', err);
-      setError('Failed to initialize Google sign-in. Please try again later.');
       setIsLoading(false);
+    } catch (error: any) {
+      setIsLoading(false);
+      console.error('Google Sign-Up/Sign-In process failed', error);
+      // Handle Firebase errors (e.g., popup closed, network error)
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled. Please try again.');
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        setError(
+          'An account already exists with this email using a different sign-in method (e.g., password). Please sign in using that method.'
+        );
+      } else {
+        setError(`Google sign-in failed: ${error.message || 'Unknown error'}`);
+      }
     }
   };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="card w-full max-w-md z-10 space-y-8 p-8 max-sm:px-5 shadow-lg rounded-xl">
+      <div className="card w-full max-w-md z-10 space-y-8 p-8 max-sm:px-5 shadow-lg">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Sign in to your account</h1>
           <p className="mt-2 text-sm text-base-content/70">

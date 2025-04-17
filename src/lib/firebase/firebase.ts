@@ -85,7 +85,7 @@ function initializeClientFirebase() {
 export const clientFirebase = initializeClientFirebase();
 
 // Admin Firebase is only imported when needed and in compatible environments
-let adminFirebase;
+let adminFirebase: { db: any; auth: any; storage: any } | null = null;
 if (typeof window === 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
   // Dynamic imports to avoid loading in edge runtime
   const importAdmin = async () => {
@@ -154,7 +154,7 @@ if (typeof window === 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
 
   // Initialize and set adminFirebase
   importAdmin().then(result => {
-    adminFirebase = result;
+    adminFirebase = result ? result() : null;
     debugFirebase('Admin Firebase setup complete', { success: !!result });
   });
 } else {

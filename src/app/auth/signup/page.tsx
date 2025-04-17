@@ -6,8 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/ui/icon';
 import Link from 'next/link';
 import { clientFirebase } from '@/lib/firebase/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { setDoc, doc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { setDoc, doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/firebase-client';
 
 export default function SignUp() {
   const searchParams = useSearchParams();
@@ -75,21 +76,17 @@ export default function SignUp() {
     setIsLoading(true);
 
     try {
-      if (!clientFirebase.app || !clientFirebase.auth || !clientFirebase.db) {
+      if (!clientFirebase.app || !auth || !db) {
         throw new Error('Firebase is not properly initialized');
       }
 
       // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
-        clientFirebase.auth,
-        email,
-        password
-      );
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
       const user = userCredential.user;
 
       // Store additional user data in Firestore
-      await setDoc(doc(clientFirebase.db, 'users', user.email || user.uid), {
+      await setDoc(doc(db, 'users', user.email || user.uid), {
         name,
         email,
         role: 'Trial',
@@ -131,32 +128,65 @@ export default function SignUp() {
     setIsLoading(true);
 
     try {
-      if (!clientFirebase.app || !clientFirebase.auth) {
-        throw new Error('Firebase is not properly initialized');
+      if (!db || !auth) {
+        throw new Error('Somwething went wrong. Please try again later.');
       }
 
-      setTimeout(async () => {
-        try {
-          await signIn('google', {
-            callbackUrl: '/',
-          });
-        } catch (err) {
-          console.error('Failed during Google sign-in process:', err);
-          setError('Failed to complete Google sign-in process. Please try again later.');
-          setIsLoading(false);
-        }
-      }, 100);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Google sign-up initialization error:', error);
-      setError(`Failed to initialize Google sign-up: ${errorMsg}`);
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+
+      const user = result.user;
+      console.log('Google client: ', user);
+      // Check if the user already exists in Firestore
+      const userDocRef = doc(db, 'users', user.email || user.uid);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate a delay
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, 'users', user.email || user.uid), {
+          name: user.displayName,
+          email: user.email,
+          role: 'Trial',
+          image: user.photoURL,
+          createdAt: new Date().toISOString(),
+          provider: 'google',
+        });
+      }
+      setSuccessMessage('Account created successfully! You can now sign in.');
+      // Get the Firebase ID token
+      const idToken = await user.getIdToken();
+
+      // Sign in to NextAuth using the credentials provider with the ID token
+      console.log('Attempting NextAuth sign-in with Firebase ID token');
+      const signInResponse = await signIn('credentials', {
+        idToken: idToken,
+        providerType: 'google',
+        id: user.uid,
+        name: user.displayName,
+        email: user.email,
+        role: 'Trial',
+        image: user.photoURL,
+        callbackUrl: '/',
+      });
       setIsLoading(false);
+    } catch (error: any) {
+      setIsLoading(false);
+      console.error('Google Sign-Up/Sign-In process failed', error);
+      // Handle Firebase errors (e.g., popup closed, network error)
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled. Please try again.');
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        setError(
+          'An account already exists with this email using a different sign-in method (e.g., password). Please sign in using that method.'
+        );
+      } else {
+        setError(`Google sign-in failed: ${error.message || 'Unknown error'}`);
+      }
     }
   };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md z-10 space-y-8 card p-8 max-sm:px-5 my-8 shadow-lg rounded-xl">
+      <div className="w-full max-w-md z-10 space-y-8 card p-8 max-sm:px-5 my-8 shadow-lg">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Create an account</h1>
           <p className="mt-2 text-sm text-base-content/70">
