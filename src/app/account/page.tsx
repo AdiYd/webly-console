@@ -54,9 +54,22 @@ function OrganizationSwitcher({
   onSwitch,
   onAddNew,
 }: OrganizationSwitcherProps) {
+  const dropdownTriggerRef = useRef<HTMLDivElement>(null); // Add a ref
+
+  const handleSwitch = (id: string) => {
+    onSwitch(id);
+    dropdownTriggerRef.current?.blur(); // Remove focus to close
+  };
+
+  const handleAddNew = () => {
+    onAddNew();
+    dropdownTriggerRef.current?.blur(); // Remove focus to close
+  };
+
   return (
     <div className="dropdown dropdown-end">
       <div
+        ref={dropdownTriggerRef}
         tabIndex={0}
         role="button"
         className="btn btn-ghost btn-sm normal-case gap-2 transition-all hover:bg-base-200 group"
@@ -73,14 +86,14 @@ function OrganizationSwitcher({
       </div>
       <ul
         tabIndex={0}
-        className="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-box w-60 mt-1"
+        className="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-box w-60 mt-1*"
       >
         <li className="menu-title py-1 px-2 text-xs font-medium opacity-60">Organizations</li>
         <div className="max-h-[240px] overflow-y-auto">
           {organizations.map(org => (
             <li key={org.id}>
               <button
-                onClick={() => onSwitch(org.id)}
+                onClick={() => handleSwitch(org.id)}
                 className={cn(
                   'flex items-center gap-2 py-2',
                   org.id === currentOrganization.id ? 'active' : ''
@@ -106,7 +119,7 @@ function OrganizationSwitcher({
         <div className="divider my-1"></div>
         <li>
           <button
-            onClick={onAddNew}
+            onClick={handleAddNew}
             className="flex items-center gap-2 text-primary"
             disabled={organizations.length >= 4}
           >
@@ -281,7 +294,7 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
                     avatar === icon ? 'btn-primary' : 'btn-ghost'
                   )}
                 >
-                  <Icon icon={icon} className="w-5 h-5" />
+                  <Icon icon={icon} />
                 </button>
               ))}
             </div>
@@ -662,7 +675,7 @@ export default function ProfilePage() {
             </div>
             <ul
               tabIndex={0}
-              className="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-box w-52 mt-1"
+              className="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-box w-52 mt-1*"
             >
               <li>
                 <button
@@ -726,7 +739,7 @@ export default function ProfilePage() {
               <div className="form-control mb-6">
                 <label className="label">
                   <span className="label-text font-medium">
-                    Organization Agenda (System Prompt)
+                    Organization prompt (System Prompt)
                   </span>
                 </label>
                 <textarea

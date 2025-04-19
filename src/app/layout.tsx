@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Roboto } from 'next/font/google';
 import { ThemeProvider } from '@/components/ui/theme-provider';
 import { auth } from '@/auth'; // Import auth to get session
-import { AIContextProvider } from '@/context/AIContext';
 import { OrganizationContextProvider } from '@/context/OrganizationContext';
 
 import './globals.css';

@@ -119,7 +119,7 @@ export function ThemeToggle() {
           tabIndex={0}
           className={`dropdown-content ${
             isMobile ? 'max-w-xs' : ''
-          } z-[10] p-3 shadow-lg bg-base-100 rounded-box min-w-64 right-0 mt-2`}
+          } z-[10] p-3 shadow-lg bg-base-100 rounded-box min-w-64 right-0 mt-2*`}
           onClick={e => e.stopPropagation()}
         >
           <div className="flex flex-col gap-3">

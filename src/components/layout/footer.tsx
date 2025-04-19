@@ -1,7 +1,16 @@
+'use client';
+
 import React from 'react';
 import { Icon } from '@iconify/react';
+import { usePathname } from 'next/navigation';
+import path from 'path';
 
 const Footer = () => {
+  const pathName = usePathname();
+  if (pathName.includes('chat')) {
+    return null; //
+  }
+
   return (
     <footer className="footer w-full px-4 shadow-sm border-transparent border-t-zinc-500/20 border-[0.8px] bg-base-100/80 backdrop-blur-lg z-10 text-base-content p-6 mt-auto">
       <div className="container mx-auto flex flex-col md:flex-row justify-between items-center max-sm:items-stretch">

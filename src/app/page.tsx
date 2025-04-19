@@ -46,10 +46,10 @@ function FeatureCard({
 
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
-  const { provider, model, agents, systemPrompt } = useOrganization();
+  const { provider, model, agents, currentOrganization } = useOrganization();
   const { theme, isDarkTheme, isLoading } = useTheme();
   const session = useSession();
-  console.log('AI Provider:', { provider, model, agents, systemPrompt });
+  console.log('Organization:', { provider, model, agents, name: currentOrganization.name });
   console.log('Current Theme:', theme, 'Is Dark Theme:', isDarkTheme);
   console.log('Session:', session);
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function Home() {
             {/* Current AI model display */}
             <div className="mt-6 text-sm opacity-70">
               Currently using <span className="font-semibold">{model}</span> from {provider}
-              <Link href="/profile" className="ml-2 underline">
+              <Link href="/account" className="ml-2 underline">
                 Change model
               </Link>
             </div>

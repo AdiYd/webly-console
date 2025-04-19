@@ -11,7 +11,6 @@ interface AIContextType {
   provider: AIProvider;
   model: string;
   temperature: number;
-  systemPrompt: string;
   organizationPrompt: string;
   icon: string;
   agents: Agent[];
@@ -26,7 +25,6 @@ interface AIContextType {
   setProvider: (provider: AIProvider) => void;
   setModel: (model: string) => void;
   setTemperature: (temp: number) => void;
-  setSystemPrompt: (prompt: string) => void;
   setOrganizationPrompt: (prompt: string) => void;
   addAgent: (agentData: Omit<Agent, 'id'>) => void;
   updateAgent: (agentId: string, agentData: Omit<Agent, 'id'>) => void;
@@ -44,7 +42,6 @@ export const useAI = (): AIContextType => {
     provider: org.provider,
     model: org.model,
     temperature: org.temperature,
-    systemPrompt: org.systemPrompt,
     organizationPrompt: org.organizationPrompt,
     icon: org.icon,
     agents: org.agents,
@@ -52,7 +49,6 @@ export const useAI = (): AIContextType => {
     setProvider: org.setProvider,
     setModel: org.setModel,
     setTemperature: org.setTemperature,
-    setSystemPrompt: org.setSystemPrompt,
     setOrganizationPrompt: org.setOrganizationPrompt,
     addAgent: org.addAgent,
     updateAgent: org.updateAgent,

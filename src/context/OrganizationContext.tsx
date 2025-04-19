@@ -29,7 +29,6 @@ export interface AIParams {
   provider: AIProvider;
   model: string;
   temperature: number;
-  systemPrompt: string;
   organizationPrompt: string;
 }
 
@@ -71,6 +70,7 @@ interface OrganizationContextType {
   // Core data
   organizations: Organization[];
   currentOrganization: Organization;
+  name: string;
 
   // Organization management
   switchOrganization: (id: string) => void;
@@ -105,7 +105,6 @@ interface OrganizationContextType {
   provider: AIProvider;
   model: string;
   temperature: number;
-  systemPrompt: string;
   organizationPrompt: string;
   agents: Agent[];
   icon: string;
@@ -115,7 +114,6 @@ interface OrganizationContextType {
   setProvider: (provider: AIProvider) => void;
   setModel: (model: string) => void;
   setTemperature: (temp: number) => void;
-  setSystemPrompt: (prompt: string) => void;
   setOrganizationPrompt: (prompt: string) => void;
   setPreferences: (settings: Partial<OrganizationSettings>) => void;
 
@@ -133,6 +131,7 @@ interface OrganizationContextType {
   lastSaved: Date | null;
   isSaving: boolean;
   saveError: string | null;
+  isAuth: boolean;
 }
 
 // Define all available AI providers and their models
@@ -244,7 +243,6 @@ const createDefaultOrganization = (name: string = 'My Organization'): Organizati
     provider: 'openai',
     model: 'gpt-4o',
     temperature: 0.7,
-    systemPrompt: 'You are a helpful assistant.',
     organizationPrompt: 'Our organization aims to provide helpful and accurate information.',
   },
   settings: {
@@ -288,17 +286,16 @@ const defaultValues: OrganizationContextType = {
   provider: defaultOrganization.ai_params.provider,
   model: defaultOrganization.ai_params.model,
   temperature: defaultOrganization.ai_params.temperature,
-  systemPrompt: defaultOrganization.ai_params.systemPrompt,
   organizationPrompt: defaultOrganization.ai_params.organizationPrompt,
   agents: defaultOrganization.agents,
   icon: availableProvidersData[defaultOrganization.ai_params.provider].icon || '',
   preferences: defaultOrganization.settings,
+  name: defaultOrganization.name,
 
   // Direct setters for backward compatibility
   setProvider: () => {},
   setModel: () => {},
   setTemperature: () => {},
-  setSystemPrompt: () => {},
   setOrganizationPrompt: () => {},
   setPreferences: () => {},
 
@@ -308,6 +305,7 @@ const defaultValues: OrganizationContextType = {
   lastSaved: null,
   isSaving: false,
   saveError: null,
+  isAuth: false,
 };
 
 // Create the context
@@ -341,6 +339,7 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
   const { theme, setTheme } = useTheme();
 
   const { status } = useSession();
+  const isAuth = status === 'authenticated';
 
   // Update icon whenever currentOrganization changes
   useEffect(() => {
@@ -591,10 +590,6 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
     updateAIParams({ temperature });
   };
 
-  const setSystemPrompt = (systemPrompt: string) => {
-    updateAIParams({ systemPrompt });
-  };
-
   const setOrganizationPrompt = (organizationPrompt: string) => {
     updateAIParams({ organizationPrompt });
   };
@@ -635,9 +630,9 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       provider: currentOrganization.ai_params.provider,
       model: currentOrganization.ai_params.model,
       temperature: currentOrganization.ai_params.temperature,
-      systemPrompt: currentOrganization.ai_params.systemPrompt,
       organizationPrompt: currentOrganization.ai_params.organizationPrompt,
       agents: currentOrganization.agents,
+      name: currentOrganization.name,
       icon,
       preferences: currentOrganization.settings,
 
@@ -645,7 +640,6 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       setProvider,
       setModel,
       setTemperature,
-      setSystemPrompt,
       setOrganizationPrompt,
       setPreferences,
 
@@ -656,6 +650,7 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       lastSaved,
       isSaving,
       saveError,
+      isAuth,
     }),
     [
       organizations,
@@ -665,6 +660,7 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       lastSaved,
       isSaving,
       saveError,
+      status,
     ]
   );
 

@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
       temperature = 0.7,
       systemPrompt = '',
       maxTokens,
+      agents,
     } = body;
 
     console.log('Received request:', {
@@ -89,8 +90,11 @@ export async function POST(req: NextRequest) {
       temperature,
       systemPrompt,
       maxTokens,
+      agents,
+      messages: messages[messages.length - 1],
       messageCount: messages?.length,
     });
+    console.log('Messages parts: ', messages[messages.length - 1]?.parts);
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'Invalid messages format' }), {
         status: 400,

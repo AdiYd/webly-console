@@ -131,7 +131,7 @@ export function Navigation() {
             </div>
             <ul
               tabIndex={0}
-              className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2"
+              className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2*"
             >
               {organizations.map(org => (
                 <li key={org.id}>
@@ -294,7 +294,7 @@ export function Navigation() {
                     stiffness: 500,
                     damping: 30,
                   }}
-                  className="dropdown-content z-[2] menu shadow bg-base-100 rounded-box w-72 mt-4"
+                  className="dropdown-content z-[2] menu shadow bg-base-100 rounded-box w-72 mt-6"
                 >
                   {userMenuContent}
                 </motion.ul>

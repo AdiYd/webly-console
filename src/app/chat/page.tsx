@@ -5,22 +5,105 @@ import ChatInterface from '@/components/ai/ChatInterface';
 import { Icon } from '@iconify/react';
 import 'react-resizable/css/styles.css';
 import { useBreakpoint } from '@/hooks/use-screen';
+import { useSession } from 'next-auth/react';
+import { AIProvider, useOrganization } from '@/context/OrganizationContext';
+
+// Define a unified state interface for better organization
+interface ChatUIState {
+  dimensions: {
+    width: number;
+    height: number;
+  };
+  position: {
+    x: number;
+    y: number;
+  };
+  display: {
+    isFullscreen: boolean;
+    isMinimized: boolean;
+    isPinned: boolean;
+  };
+  interaction: {
+    isDragging: boolean;
+    isResizing: boolean;
+    startPos: {
+      x: number;
+      y: number;
+    };
+    startDimensions: {
+      width: number;
+      height: number;
+    };
+  };
+}
+
+// Default state values
+const DEFAULT_UI_STATE: ChatUIState = {
+  dimensions: { width: 350, height: 600 },
+  position: { x: 0, y: 0 },
+  display: {
+    isFullscreen: true,
+    isMinimized: false,
+    isPinned: true,
+  },
+  interaction: {
+    isDragging: false,
+    isResizing: false,
+    startPos: { x: 0, y: 0 },
+    startDimensions: { width: 800, height: 600 },
+  },
+};
 
 export default function ChatPage() {
-  const [dimensions, setDimensions] = useState({ width: 350, height: 600 });
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isFullscreen, setIsFullscreen] = useState(true);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chatWindowRef = useRef<HTMLDivElement>(null);
+  const [chatUI, setChatUI] = useState<ChatUIState>(DEFAULT_UI_STATE);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 1024, height: 768 });
   const [isMounted, setIsMounted] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [isResizing, setIsResizing] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isPinned, setIsPinned] = useState(true);
-  const [startDimensions, setStartDimensions] = useState({ width: 800, height: 600 });
+  const { agents, availableProviders, isAuth, model, provider, setProvider, setModel, icon } =
+    useOrganization();
+
+  // Refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chatWindowRef = useRef<HTMLDivElement>(null);
+
   const { isMobile } = useBreakpoint();
+
+  // Helper function to update specific parts of the chatUI state
+  const updateChatUI = (updates: Partial<ChatUIState>) => {
+    setChatUI(prev => ({
+      ...prev,
+      ...updates,
+    }));
+  };
+
+  // Helper function to update nested properties
+  const updateNestedState = (
+    category: keyof ChatUIState,
+    updates: Partial<ChatUIState[keyof ChatUIState]>
+  ) => {
+    setChatUI(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        ...updates,
+      },
+    }));
+  };
+
+  // Save preferences to localStorage
+  const savePreferences = () => {
+    // Only save if preferences have been loaded (prevents saving defaults)
+    if (!preferencesLoaded) return;
+
+    const preferences = {
+      dimensions: chatUI.dimensions,
+      position: chatUI.position,
+      display: chatUI.display,
+    };
+
+    localStorage.setItem('chatPreferences', JSON.stringify(preferences));
+  };
+
   // Mark component as mounted and set initial window size
   useEffect(() => {
     setIsMounted(true);
@@ -41,110 +124,153 @@ export default function ChatPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Get initial dimensions based on container size and saved preferences
+  // Load saved preferences and initialize dimensions
   useEffect(() => {
+    // First set container-based initial dimensions
     if (containerRef.current) {
       const { clientWidth, clientHeight } = containerRef.current;
-      setDimensions({
-        width: Math.min(800, clientWidth - 20), // Subtract padding
+      const initialDimensions = {
+        width: Math.min(800, clientWidth - 20),
         height: Math.min(600, clientHeight - 20),
-      });
+      };
+
+      // Only update dimensions if preferences haven't been loaded yet
+      if (!preferencesLoaded) {
+        updateNestedState('dimensions', initialDimensions);
+      }
     }
+
+    // Then try to load saved preferences
     const savedPreferences = localStorage.getItem('chatPreferences');
     if (savedPreferences) {
-      const {
-        isFullscreen: savedFullscreen,
-        position: savedPosition,
-        dimensions: savedDimensions,
-        isPinned: savedPinned,
-        isMinimized: savedMinimized,
-      } = JSON.parse(savedPreferences);
-      setIsFullscreen(savedFullscreen);
-      setPosition(savedPosition);
-      setDimensions(savedDimensions);
-      setIsPinned(savedPinned);
-      setIsMinimized(savedMinimized);
+      try {
+        const parsedPreferences = JSON.parse(savedPreferences);
+
+        // Create a new object with just the data we want to restore
+        // This prevents issues if the saved structure doesn't match current structure
+        const restoredState = {
+          dimensions: parsedPreferences.dimensions || DEFAULT_UI_STATE.dimensions,
+          position: parsedPreferences.position || DEFAULT_UI_STATE.position,
+          display: parsedPreferences.display || DEFAULT_UI_STATE.display,
+        };
+
+        // Update the state with loaded preferences
+        updateChatUI({
+          dimensions: restoredState.dimensions,
+          position: restoredState.position,
+          display: restoredState.display,
+        });
+
+        // Mark preferences as loaded to enable saving
+        setPreferencesLoaded(true);
+      } catch (e) {
+        console.error('Error parsing saved chat preferences:', e);
+        setPreferencesLoaded(true); // Still mark as loaded so we can save new preferences
+      }
+    } else {
+      // No saved preferences found, mark as loaded so we can save current state
+      setPreferencesLoaded(true);
     }
+
+    // Save preferences when component unmounts
     return () => {
-      savePreferences(); // Save preferences on unmount
+      if (preferencesLoaded) {
+        savePreferences();
+      }
     };
   }, []);
 
   // Reset position when toggling fullscreen
   useEffect(() => {
-    if (isFullscreen) {
-      setPosition({ x: 0, y: 0 });
+    if (chatUI.display.isFullscreen) {
+      updateNestedState('position', { x: 0, y: 0 });
     }
-  }, [isFullscreen]);
+  }, [chatUI.display.isFullscreen]);
 
-  // Save preferences to localStorage
+  // Save preferences to localStorage when relevant states change
   useEffect(() => {
-    savePreferences();
-  }, [isFullscreen, position, dimensions, isPinned, isMinimized]);
-
-  const savePreferences = () => {
-    const preferences = {
-      isFullscreen,
-      position,
-      dimensions,
-      isPinned,
-      isMinimized,
-    };
-    localStorage.setItem('chatPreferences', JSON.stringify(preferences));
-  };
+    // Only save if preferences have been loaded
+    if (preferencesLoaded) {
+      savePreferences();
+    }
+  }, [
+    chatUI.display.isFullscreen,
+    chatUI.display.isMinimized,
+    chatUI.display.isPinned,
+    chatUI.dimensions.width,
+    chatUI.dimensions.height,
+    chatUI.position.x,
+    chatUI.position.y,
+    preferencesLoaded,
+  ]);
 
   // Custom drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (isFullscreen) return;
-    setIsDragging(true);
-    setStartPos({ x: e.clientX - position.x, y: e.clientY - position.y });
+    if (chatUI.display.isFullscreen) return;
+
+    updateNestedState('interaction', {
+      isDragging: true,
+      startPos: {
+        x: e.clientX - chatUI.position.x,
+        y: e.clientY - chatUI.position.y,
+      },
+    });
   };
 
   // Custom resize handlers
   const handleResizeMouseDown = (e: React.MouseEvent) => {
-    if (isFullscreen) return;
+    if (chatUI.display.isFullscreen) return;
+
     e.stopPropagation();
     e.preventDefault();
-    setIsResizing(true);
-    setStartPos({ x: e.clientX, y: e.clientY });
-    setStartDimensions({ width: dimensions.width, height: dimensions.height });
+
+    updateNestedState('interaction', {
+      isResizing: true,
+      startPos: { x: e.clientX, y: e.clientY },
+      startDimensions: {
+        width: chatUI.dimensions.width,
+        height: chatUI.dimensions.height,
+      },
+    });
   };
 
+  // Handle mouse move for dragging and resizing
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        const newX = e.clientX - startPos.x;
-        const newY = e.clientY - startPos.y;
+      if (chatUI.interaction.isDragging) {
+        const newX = e.clientX - chatUI.interaction.startPos.x;
+        const newY = e.clientY - chatUI.interaction.startPos.y;
 
         // Boundary check
         if (containerRef.current) {
           const containerRect = containerRef.current.getBoundingClientRect();
           const chatRect = chatWindowRef.current?.getBoundingClientRect();
 
-          if (chatRect && !isPinned) {
+          if (chatRect && !chatUI.display.isPinned) {
             const maxX = containerRect.width - chatRect.width;
             const maxY = containerRect.height - chatRect.height;
-            setPosition({
+
+            updateNestedState('position', {
               x: Math.max(0, Math.min(newX, maxX)),
               y: Math.max(0, Math.min(newY, maxY)),
             });
           }
         }
-      } else if (isResizing) {
-        const deltaWidth = e.clientX - startPos.x;
-        const deltaHeight = e.clientY - startPos.y;
+      } else if (chatUI.interaction.isResizing) {
+        const deltaWidth = e.clientX - chatUI.interaction.startPos.x;
+        const deltaHeight = e.clientY - chatUI.interaction.startPos.y;
 
-        const newWidth = Math.max(300, startDimensions.width + deltaWidth);
-        const newHeight = Math.max(300, startDimensions.height + deltaHeight);
+        const newWidth = Math.max(300, chatUI.interaction.startDimensions.width + deltaWidth);
+        const newHeight = Math.max(300, chatUI.interaction.startDimensions.height + deltaHeight);
 
         // Boundary check - allow more space for width
         if (containerRef.current) {
           const containerRect = containerRef.current.getBoundingClientRect();
-          const parentWidth = containerRect.width + dimensions.width; // Include current width in calculation
-          const maxWidth = parentWidth - position.x - 20; // Leave some margin
-          const maxHeight = containerRect.height - position.y - 0;
+          const parentWidth = containerRect.width + chatUI.dimensions.width;
+          const maxWidth = parentWidth - chatUI.position.x - 20;
+          const maxHeight = containerRect.height - chatUI.position.y - 0;
 
-          setDimensions({
+          updateNestedState('dimensions', {
             width: Math.min(newWidth, maxWidth),
             height: Math.min(newHeight, maxHeight),
           });
@@ -153,13 +279,13 @@ export default function ChatPage() {
     };
 
     const handleMouseUp = () => {
-      setIsDragging(false);
-      setIsResizing(false);
-      // Save preferences to localStorage
-      savePreferences();
+      updateNestedState('interaction', {
+        isDragging: false,
+        isResizing: false,
+      });
     };
 
-    if (isDragging || isResizing) {
+    if (chatUI.interaction.isDragging || chatUI.interaction.isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
@@ -168,28 +294,170 @@ export default function ChatPage() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, isResizing, startPos, position, startDimensions, dimensions, containerRef]);
+  }, [
+    chatUI.interaction.isDragging,
+    chatUI.interaction.isResizing,
+    chatUI.interaction.startPos,
+    chatUI.position,
+    chatUI.interaction.startDimensions,
+    chatUI.dimensions,
+    chatUI.display.isPinned,
+  ]);
 
-  // Toggle fullscreen mode
-  const toggleFullscreen = () => {
-    if (!isFullscreen && isMinimized) {
-      setIsMinimized(false);
+  // Toggle UI state functions
+  const toggleFullscreen = (e: React.MouseEvent) => {
+    // Stop propagation to prevent the parent's onMouseDown from firing
+    e.stopPropagation();
+
+    const newIsFullscreen = !chatUI.display.isFullscreen;
+
+    // If coming out of fullscreen while minimized, restore from minimized state
+    if (!newIsFullscreen && chatUI.display.isMinimized) {
+      updateNestedState('display', {
+        isFullscreen: newIsFullscreen,
+        isMinimized: false,
+        isPinned: true,
+      });
+    } else {
+      updateNestedState('display', {
+        isFullscreen: newIsFullscreen,
+        isMinimized: false,
+        // isPinned: false,
+      });
     }
-    setIsFullscreen(!isFullscreen);
   };
 
-  const toggleMinimize = () => {
-    if (isFullscreen) {
-      setIsFullscreen(false);
+  const toggleMinimize = (e: React.MouseEvent) => {
+    // Stop propagation to prevent the parent's onMouseDown from firing
+    e.stopPropagation();
+
+    // If fullscreen, exit fullscreen mode first
+    if (chatUI.display.isFullscreen) {
+      updateNestedState('display', {
+        isFullscreen: false,
+        isMinimized: !chatUI.display.isMinimized,
+      });
+    } else {
+      updateNestedState('display', {
+        isMinimized: !chatUI.display.isMinimized,
+      });
     }
-    setIsMinimized(!isMinimized);
   };
+
+  const togglePin = (e: React.MouseEvent) => {
+    // Stop propagation to prevent the parent's onMouseDown from firing
+    e.stopPropagation();
+
+    updateNestedState('display', {
+      isPinned: !chatUI.display.isPinned,
+    });
+  };
+
+  const renderModelSelector = () => (
+    <div
+      className={`
+      ${
+        chatUI.display.isMinimized ? 'relative' : 'absolute'
+      } gap-4 w-full z-30 backdrop-blur-lg flex items-center overflow-x-auto justify-between py-1 px-3 border-transparent border-[1px] border-b-zinc-400/20
+      drag-handle  ${
+        chatUI.display.isFullscreen || chatUI.display.isPinned ? 'cursor-default' : 'cursor-move'
+      } flex items-center justify-between px-3 z-50`}
+      onMouseDown={handleMouseDown}
+    >
+      {/* 3 circles for Apple browser reference */}
+      <div className="flex items-center gap-1 z-10">
+        <div className="w-3 h-3 rounded-full bg-red-500* btn min-h-2 btn-xs btn-primary btn-circle"></div>
+        <div className="w-3 h-3 rounded-full bg-yellow-500* btn min-h-2 btn-xs btn-secondary btn-circle"></div>
+        <div className="w-3 h-3 rounded-full bg-green-500* btn min-h-2 btn-xs btn-accent btn-circle"></div>
+        {chatUI.display.isFullscreen && (
+          <span className="text-sm ml-4 font-medium">Webly AI Organization</span>
+        )}
+      </div>
+      {/* Show available agents */}
+      {!chatUI.display.isMinimized && (
+        <div className="flex items-center gap-3">
+          {isAuth &&
+            agents.map((agent, index) => (
+              <div key={index} className="agent-item">
+                {agent.name}
+              </div>
+            ))}
+          <div className="flex items-center gap-3">
+            <Icon icon={icon} className="w-5 h-5" />
+            <select
+              className="select w-max select-sm select-bordered"
+              value={provider}
+              onChange={e => {
+                const newProvider = e.target.value as AIProvider;
+                setProvider(newProvider);
+              }}
+              // disabled={isLoading}
+            >
+              {Object.keys(availableProviders).map(p => (
+                <option key={p} value={p} className="flex items-center">
+                  {availableProviders[p as AIProvider].name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <select
+            className="select w-fit select-sm select-bordered"
+            value={model}
+            onChange={e => setModel(e.target.value)}
+            // disabled={isLoading}
+          >
+            {provider &&
+              availableProviders[provider]?.models.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
+      {/* Resize icons */}
+      <div className="flex flex-row-reverse gap-2">
+        <button
+          title={chatUI.display.isFullscreen ? 'minimize' : 'maximize'}
+          onClick={toggleFullscreen}
+          className="btn btn-ghost btn-xs btn-circle"
+        >
+          <Icon
+            icon={chatUI.display.isFullscreen ? 'flowbite:minimize-outline' : 'mdi:fullscreen'}
+            className="w-4 h-4"
+          />
+        </button>
+        <button
+          title={chatUI.display.isMinimized ? 'open' : 'close'}
+          onClick={toggleMinimize}
+          className="btn btn-ghost btn-xs btn-circle"
+        >
+          <Icon
+            icon={chatUI.display.isMinimized ? 'ic:round-plus' : 'ic:round-minimize'}
+            className="w-4 h-4"
+          />
+        </button>
+        {!chatUI.display.isFullscreen && (
+          <button
+            title={chatUI.display.isPinned ? 'unpin element' : 'pin element'}
+            onClick={togglePin}
+            className="btn btn-ghost btn-xs btn-circle"
+          >
+            <Icon
+              icon={chatUI.display.isPinned ? 'mdi:pin-outline' : 'ri:unpin-line'}
+              className="w-4 h-4"
+            />
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   if (!isMounted) {
     // Return a placeholder or loading state until component mounts
     return (
       <div className="p-4 flex items-center justify-center h-[calc(100vh-8rem)]">
-        <div className="card !bg-base-100 p-8 shadow-lg">
+        <div className="card p-8 shadow-lg">
           <span className="loading loading-spinner loading-lg"></span>
         </div>
       </div>
@@ -200,26 +468,28 @@ export default function ChatPage() {
     <div
       ref={containerRef}
       style={{ height: isMobile ? '90vh' : '' }}
-      className="flex pt-2 w-full h-[calc(100vh-8rem)] transition-[width] relative"
+      className="flex pt-2 w-full h-[calc(100vh-3rem)] transition-[width] relative"
     >
       {!isMobile ? (
         <>
           <div
             id="chat-container"
             className={`${
-              isMinimized
+              chatUI.display.isMinimized
                 ? 'h-fit flex-shrink-0'
                 : isMobile
                 ? 'overflow-hidden flex-shrink-0'
                 : 'h-full overflow-hidden flex-shrink-0'
             } py-1 z-10 flex flex-col relative`}
             style={
-              !isFullscreen && !isMinimized
+              !chatUI.display.isFullscreen && !chatUI.display.isMinimized
                 ? {
-                    minWidth: dimensions.width,
-                    width: dimensions.width,
-                    position: isPinned ? 'relative' : 'absolute',
-                    transform: isPinned ? '' : `translate(${position.x}px, ${position.y}px)`,
+                    minWidth: chatUI.dimensions.width,
+                    width: chatUI.dimensions.width,
+                    position: chatUI.display.isPinned ? 'relative' : 'absolute',
+                    transform: chatUI.display.isPinned
+                      ? ''
+                      : `translate(${chatUI.position.x - 10}px, ${chatUI.position.y - 10}px)`,
                   }
                 : {}
             }
@@ -227,27 +497,35 @@ export default function ChatPage() {
             <div
               ref={chatWindowRef}
               className={`${
-                isFullscreen
-                  ? 'fixed inset-4 z-50 mt-12 mb-16'
+                chatUI.display.isFullscreen
+                  ? 'fixed inset-4 h-[fill-available] z-50 mt-12 mb-16*'
                   : 'relative z-20 max-h-[fill-available]'
               } `}
               style={
-                !isFullscreen && !isMinimized
+                !chatUI.display.isFullscreen && !chatUI.display.isMinimized
                   ? {
                       width: '100%',
-                      height: dimensions.height,
-                      transition: isDragging || isResizing ? 'none' : 'box-shadow 0.3s ease',
+                      height: chatUI.dimensions.height,
+                      transition:
+                        chatUI.interaction.isDragging || chatUI.interaction.isResizing
+                          ? 'none'
+                          : 'box-shadow 0.3s ease',
                     }
-                  : isMinimized
+                  : chatUI.display.isMinimized
                   ? {
-                      width: '250px',
+                      width: '280px',
                       position: 'fixed',
                       zIndex: 500,
-                      bottom: '5rem',
+                      bottom: '2.5rem',
                       left: '0.5rem',
                       height: 'fit-content',
-                      transform: isPinned ? '' : `translate(${position.x}px, ${position.y}px)`,
-                      transition: isDragging || isResizing ? 'none' : 'box-shadow 0.3s ease',
+                      transform: chatUI.display.isPinned
+                        ? ''
+                        : `translate(${chatUI.position.x}px, ${chatUI.position.y}px)`,
+                      transition:
+                        chatUI.interaction.isDragging || chatUI.interaction.isResizing
+                          ? 'none'
+                          : 'box-shadow 0.3s ease',
                     }
                   : {}
               }
@@ -255,61 +533,20 @@ export default function ChatPage() {
               <div
                 style={{ borderRadius: '0.5rem' }}
                 className={`card 
-              ${
-                isMinimized
-                  ? 'shadow-sm shadow-orange-500 hover:shadow-lg hover:shadow-amber-400'
-                  : ''
-              }
-              !bg-base-100 overflow-hidden border border-base-300 transition-shadow h-full`}
+                ${
+                  chatUI.display.isMinimized
+                    ? 'shadow-sm shadow-orange-500 hover:shadow-lg hover:shadow-amber-400'
+                    : ''
+                }
+                !bg-base-100 overflow-hidden border border-base-300 transition-shadow h-full`}
               >
-                <div
-                  className={`drag-handle w-full h-8 bg-base-300 ${
-                    isFullscreen || isPinned ? 'cursor-default' : 'cursor-move'
-                  } flex items-center justify-between px-3`}
-                  onMouseDown={handleMouseDown}
-                >
-                  <span className="text-sm font-medium">Webly AI Agent</span>
-                  <div className="flex flex-row-reverse gap-2">
-                    <button
-                      title={isFullscreen ? 'minimize' : 'maximize'}
-                      onClick={toggleFullscreen}
-                      className="btn btn-ghost btn-xs btn-circle"
-                    >
-                      <Icon
-                        icon={isFullscreen ? 'flowbite:minimize-outline' : 'mdi:fullscreen'}
-                        className="w-4 h-4"
-                      />
-                    </button>
-                    <button
-                      title={isMinimized ? 'open' : 'close'}
-                      onClick={toggleMinimize}
-                      className="btn btn-ghost btn-xs btn-circle"
-                    >
-                      <Icon
-                        icon={isMinimized ? 'ic:round-plus' : 'ic:round-minimize'}
-                        className="w-4 h-4"
-                      />
-                    </button>
-                    {!isFullscreen && (
-                      <button
-                        title={isPinned ? 'unpin element' : 'pin element'}
-                        onClick={() => setIsPinned(!isPinned)}
-                        className="btn btn-ghost btn-xs btn-circle"
-                      >
-                        <Icon
-                          icon={isPinned ? 'mdi:pin-outline' : 'ri:unpin-line'}
-                          className="w-4 h-4"
-                        />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {!isMinimized && (
-                  <div className="h-[calc(100%-2rem)] overflow-hidden">
-                    <ChatInterface isMinimized={!isFullscreen} />
+                {renderModelSelector()}
+                {!chatUI.display.isMinimized && (
+                  <div className="h-full overflow-hidden">
+                    <ChatInterface isMinimized={!chatUI.display.isFullscreen} />
                   </div>
                 )}
-                {!isFullscreen && !isMinimized && (
+                {!chatUI.display.isFullscreen && !chatUI.display.isMinimized && (
                   <div
                     className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center"
                     onMouseDown={handleResizeMouseDown}
@@ -323,8 +560,8 @@ export default function ChatPage() {
 
           <div
             id="element-container"
-            className="flex-1 h-full overflow-auto px-2 py-1  backdrop-blur-sm"
-            style={isFullscreen || isMobile ? { display: 'none' } : {}}
+            className="flex-1 h-full overflow-auto px-2 py-1 backdrop-blur-sm"
+            style={chatUI.display.isFullscreen || isMobile ? { display: 'none' } : {}}
           >
             <div style={{ borderRadius: '0.5rem' }} className="card rounded-md h-full bg-base-100">
               <div className="card-body">
@@ -338,7 +575,7 @@ export default function ChatPage() {
           </div>
         </>
       ) : (
-        <div className="flex-1 h-full overflow-auto py-1  backdrop-blur-sm">
+        <div className="flex-1 h-full overflow-auto py-1 backdrop-blur-sm">
           <ChatInterface isMinimized={true} />
         </div>
       )}
