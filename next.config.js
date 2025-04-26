@@ -35,6 +35,11 @@ const nextConfig = {
 
     return config;
   },
+  env: {
+    FIREBASE_ADMIN_SDK: Buffer.from(process.env.FIREBASE_ADMIN_SDK_BASE64, 'base64').toString(
+      'utf-8'
+    ),
+  },
 };
 
 module.exports = nextConfig;

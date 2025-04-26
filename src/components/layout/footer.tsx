@@ -3,7 +3,6 @@
 import React from 'react';
 import { Icon } from '@iconify/react';
 import { usePathname } from 'next/navigation';
-import path from 'path';
 
 const Footer = () => {
   const pathName = usePathname();

@@ -50,7 +50,6 @@ export default function Home() {
   const { theme, isDarkTheme, isLoading } = useTheme();
   const session = useSession();
   console.log('Organization:', { provider, model, agents, name: currentOrganization.name });
-  console.log('Current Theme:', theme, 'Is Dark Theme:', isDarkTheme);
   console.log('Session:', session);
   useEffect(() => {
     // Set mounted to true after the component has mounted
@@ -63,7 +62,7 @@ export default function Home() {
   }
 
   return (
-    <div className="">
+    <div className="mt-12 mb-18">
       {(isDarkTheme || theme === 'aqua') && <FireDots particleNum={30} particleBaseSize={17} />}
       {/* Hero Section */}
       <section className="hero py-20 ">

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/ui/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrganization } from '@/context/OrganizationContext';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 const Header = () => {
   const [isVisible, setIsVisible] = useState(true);
@@ -12,6 +12,12 @@ const Header = () => {
   const headerScrollThreshold = 500; // px
   const { currentOrganization, organizations, switchOrganization } = useOrganization();
   const router = useRouter();
+  const pathName = usePathname();
+  useEffect((): any => {
+    if (pathName.includes('chat')) {
+      setIsVisible(false);
+    }
+  }, [pathName]);
 
   const handleScroll = () => {
     const currentScrollY = window.scrollY;

@@ -2,6 +2,7 @@ import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage, Storage } from 'firebase-admin/storage';
 import { getAuth, Auth } from 'firebase-admin/auth';
+import { serverLogger } from '@/utils/logger';
 
 // Ensure this file is never imported client-side (though bundler should handle it)
 if (typeof window !== 'undefined') {
@@ -37,36 +38,15 @@ function initializeAdmin(): AdminFirebase {
   }
 
   try {
-    // Validate private key format
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('FIREBASE_PRIVATE_KEY environment variable is not set');
-    }
-
-    // Handle various PEM formatting issues
-    privateKey = privateKey.replace(/\\n/g, '\n');
-
-    // Remove any surrounding quotes that might have been added in the .env file
-    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-      privateKey = privateKey.slice(1, -1);
-    }
-
-    // Validate basic PEM format structure
-    if (!privateKey.includes('BEGIN PRIVATE KEY') || !privateKey.includes('END PRIVATE KEY')) {
-      throw new Error('Invalid private key format. Must be a valid PEM-formatted private key');
-    }
-
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL) {
+    if (!process.env.FIREBASE_ADMIN_SDK_BASE64) {
       throw new Error('Missing Firebase Admin credentials in environment variables');
     }
+    const privateKey = JSON.parse(process.env.FIREBASE_ADMIN_SDK || '');
+    serverLogger.info('Firebase Admin SDK private key:', privateKey);
 
     const newApp = initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
-      }),
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      credential: cert(privateKey),
+      // storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
 
     console.log('[Firebase Admin] Initialized successfully.');

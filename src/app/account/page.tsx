@@ -76,7 +76,7 @@ function OrganizationSwitcher({
       >
         <div className="flex items-center gap-2 max-w-[250px]">
           <div className="avatar placeholder">
-            <div className="bg-primary text-primary-content w-6 h-6 rounded-md">
+            <div className="bg-base-200 text-base-content w-6 h-6 rounded-full">
               <span className="text-xs">{currentOrganization.name.charAt(0)}</span>
             </div>
           </div>
@@ -99,11 +99,11 @@ function OrganizationSwitcher({
                   org.id === currentOrganization.id ? 'active' : ''
                 )}
               >
-                <div className="avatar placeholder">
+                <div className="avatar rounded-3xl placeholder">
                   <div
                     className={`${
-                      org.id === currentOrganization.id ? 'bg-primary' : 'bg-base-300'
-                    } text-primary-content w-6 h-6 rounded-md transition-colors`}
+                      org.id === currentOrganization.id ? 'bg-base-300' : 'bg-base-300'
+                    } text-base-content w-6 h-6 rounded-full transition-colors`}
                   >
                     <span className="text-xs">{org.name.charAt(0)}</span>
                   </div>
@@ -656,7 +656,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 md:py-8">
+    <div className="container mx-auto px-4 mt-12 mb-18 py-6 md:py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Profile</h1>
 
@@ -1079,8 +1079,8 @@ export default function ProfilePage() {
                       <div className="avatar placeholder">
                         <div
                           className={`${
-                            org.id === currentOrganization.id ? 'bg-primary' : 'bg-base-300'
-                          } text-primary-content w-6 h-6 rounded-md`}
+                            org.id === currentOrganization.id ? 'bg-base-300' : 'bg-base-200'
+                          } text-base-content w-6 h-6 rounded-full`}
                         >
                           <span className="text-xs">{org.name.charAt(0)}</span>
                         </div>

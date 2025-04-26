@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/icon';
 import Link from 'next/link';
-import { clientFirebase } from '@/lib/firebase/firebase';
 import { signIn } from 'next-auth/react';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase/firebase-client';
@@ -23,21 +22,6 @@ export default function SignIn() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Check Firebase initialization on mount
-  useEffect(() => {
-    try {
-      const fbStatus = {
-        appInitialized: !!clientFirebase.app,
-        authInitialized: !!clientFirebase.auth,
-        error: clientFirebase.error,
-      };
-
-      console.log('%c[Firebase Status]', 'color: lightpurple;', fbStatus);
-    } catch (err) {
-      console.error('Error checking Firebase status:', err);
-    }
-  }, []);
 
   // Handle URL error parameters
   useEffect(() => {

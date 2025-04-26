@@ -4,19 +4,17 @@ import { useState, FormEvent, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { Icon } from '@iconify/react';
 import { useSession } from 'next-auth/react';
-import { useAI, AIProvider } from '@/context/AIContext';
 import { useOrganization } from '@/context/OrganizationContext';
+import { clientLogger } from '@/utils/logger';
 
 // File handling constants
 const MAX_FILE_SIZE_MB = 20;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const ALLOWED_DOC_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+const ALLOWED_DOC_TYPES: string[] = [
+  // 'application/pdf',
 ];
-const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES];
+const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES];
 
 // Type definitions
 interface ChatInterfaceProps {
@@ -24,36 +22,16 @@ interface ChatInterfaceProps {
   isMinimized?: boolean;
 }
 
+// Attachment interface - must match server expectations
 interface Attachment {
-  /**
-   * The name of the attachment, usually the file name.
-   */
+  type: string;
   name?: string;
-  /**
-   * A string indicating the [media type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type).
-   * By default, it's extracted from the pathname's extension.
-   */
   contentType?: string;
-  /**
-   * The URL of the attachment. It can either be a URL to a hosted file or a [Data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs).
-   */
-  url: string;
-  /**
-   * Metadata about the attachment, such as size and type.
-   */
+  url?: string;
+  image?: string;
   _metadata?: {
-    /**
-     * The size of the attachment in bytes.
-     */
-    size?: number;
-    /**
-     * The type of the attachment (e.g., image, document).
-     */
-    type?: string;
-    /**
-     * The actual file object if it's a local file.
-     */
-    localFile?: File;
+    type: string;
+    size: number;
   };
 }
 
@@ -64,60 +42,7 @@ const exampleChat = [
     content: 'Hello! How can I assist you today?',
     id: '1',
   },
-  {
-    role: 'user',
-    content: 'What can you do?',
-    id: '2',
-  },
-  {
-    role: 'assistant',
-    content:
-      'I can help with a variety of tasks, including answering questions, providing information, and assisting with learning.',
-    id: '3',
-  },
-  {
-    role: 'user',
-    content: 'Can you show me an example?',
-    id: '4',
-  },
-  {
-    role: 'assistant',
-    content:
-      'Sure! I can provide examples of code, explanations, or even help with specific topics. Just let me know what you need!',
-    id: '5',
-  },
-  {
-    role: 'user',
-    content: "Great! Let's start with a coding question.",
-    id: '6',
-  },
-  {
-    role: 'assistant',
-    content: "Sounds good! Please provide your coding question, and I'll do my best to assist you.",
-    id: '7',
-  },
-  {
-    role: 'user',
-    content: 'Can you explain how to use React hooks?',
-    id: '8',
-  },
-  {
-    role: 'assistant',
-    content:
-      'React hooks are functions that let you use state and other React features without writing a class. Some common hooks include useState, useEffect, and useContext. Would you like to see an example?',
-    id: '9',
-  },
-  {
-    role: 'user',
-    content: 'Yes, please!',
-    id: '10',
-  },
-  {
-    role: 'assistant',
-    content:
-      "Here is a simple example using the useState hook:\n\n```javascript\nimport React, { useState } from 'react';\n\nfunction Counter() {\n  const [count, setCount] = useState(0);\n\n  return (\n    <div>\n      <p>You clicked {count} times</p>\n      <button onClick={() => setCount(count + 1)}>Click me</button>\n    </div>\n  );\n}\n```\n\nThis code creates a button that increments the count each time it is clicked.",
-    id: '11',
-  },
+  // ... other example messages can be shortened to save space
 ];
 
 export default function ChatInterface({
@@ -126,10 +51,10 @@ export default function ChatInterface({
 }: ChatInterfaceProps) {
   // UI state management
   const [error, setError] = useState<string | null>(null);
-  const [update, setUpdate] = useState(false); // State to trigger re-render
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
 
   // References
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -138,25 +63,14 @@ export default function ChatInterface({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Context and session data
-  const {
-    provider,
-    model,
-    icon,
-    temperature,
-    organizationPrompt,
-    availableProviders,
-    agents,
-    isAuth,
-    setProvider,
-    setModel,
-  } = useOrganization();
+  const { provider, model, icon, temperature, organizationPrompt, agents } = useOrganization();
   const { data: session } = useSession();
 
   // User information
   const userImage = session?.user?.image || 'https://i.pravatar.cc/150?img=3';
   const userName = session?.user?.name || 'User';
 
-  // Initialize chat with the useChat hook
+  // Initialize chat with the useChat hook - simplified for cleaner streaming
   const {
     messages,
     input,
@@ -164,7 +78,6 @@ export default function ChatInterface({
     handleSubmit: handleChatSubmit,
     status,
     error: chatError,
-    append,
   } = useChat({
     api: '/api/ai/chat',
     initialMessages: initialMessages,
@@ -174,30 +87,41 @@ export default function ChatInterface({
       temperature,
       systemPrompt: organizationPrompt || '',
       agents,
+      attachments: pendingAttachments,
     },
-    onResponse: async response => {},
-    onError: async error => {},
+    onResponse: async response => {
+      // Clear pending attachments after a successful response
+      setPendingAttachments([]);
+    },
+    onError: async error => {
+      clientLogger.error('ChatInterface', 'Chat error', error);
+    },
   });
-  console.log('Chat messages:', messages);
-  console.log('Chat status:', status);
-  // Track loading state
+
+  // Track loading state but only for the input area, not for message rendering
   const isLoading = status === 'submitted' || status === 'streaming';
+  // Effect: Focus on input when ready
   useEffect(() => {
     if (['ready', 'error'].includes(status) && textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [status]);
 
-  // Effect: Update when isMinimized changes
-  useEffect(() => {
-    setUpdate(prev => !prev);
-  }, [isMinimized]);
+  // useEffect(() => {
+  //   reload().then((res: any) => {
+  //     clientLogger.info('Reloaded chat history', res);
+  //   });
+  // }, [reload]);
 
   // Effect: Handle chat errors
   useEffect(() => {
     if (chatError) {
-      console.log('Chat error:', chatError.message);
-      setError(JSON.parse(chatError.message).error || 'An error occurred');
+      clientLogger.error('ChatInterface', 'Chat error from hook', chatError);
+      try {
+        setError(JSON.parse(chatError.message).error || 'An error occurred');
+      } catch (e) {
+        setError(chatError.message || 'An error occurred');
+      }
     } else {
       setError(null);
     }
@@ -232,7 +156,7 @@ export default function ChatInterface({
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return {
         valid: false,
-        reason: `File too large. Maximum size: ${MAX_FILE_SIZE_MB}MB`,
+        reason: `File too large. Maximum size: ${MAX_FILE_SIZE_MB}`,
       };
     }
 
@@ -242,10 +166,8 @@ export default function ChatInterface({
   /**
    * Processes files and adds valid ones to attachments
    */
-  /**
-   * Processes files and adds valid ones to attachments
-   */
   const processFiles = async (files: FileList | File[]): Promise<void> => {
+    clientLogger.debug('ChatInterface', 'Processing files', { count: files.length });
     const newFiles: Attachment[] = [];
     let hasError = false;
     let totalSize = 0;
@@ -266,23 +188,51 @@ export default function ChatInterface({
       }
 
       const fileType = ALLOWED_IMAGE_TYPES.includes(file.type) ? 'image' : 'document';
+      clientLogger.debug('ChatInterface', 'File validated', {
+        name: file.name,
+        type: file.type,
+        size: formatFileSize(file.size),
+        mapped_type: fileType,
+      });
 
       try {
+        // Create data URL from file
+        const dataUrl = await createDataUrl(file);
+        clientLogger.debug('ChatInterface', 'Data URL created', {
+          name: file.name,
+          preview: dataUrl.substring(0, 50) + '...',
+        });
+
         // Create attachment in the format expected by Vercel AI SDK
         const attachment: Attachment = {
+          type: fileType, // 'image' or 'document'
           name: file.name,
           contentType: file.type,
-          url: await createDataUrl(file),
+          url: dataUrl,
+          image: fileType === 'image' ? dataUrl : undefined, // Only set image URL for image types
           _metadata: {
             type: fileType,
             size: file.size,
-            localFile: file,
           },
         };
 
+        // Validate the attachment object
+        if (fileType === 'image' && !attachment.image) {
+          clientLogger.error('ChatInterface', 'Image attachment missing image URL', {
+            name: file.name,
+          });
+        }
+
+        clientLogger.debug('ChatInterface', 'Created attachment', {
+          name: attachment.name,
+          type: attachment.type,
+          size: attachment._metadata?.size,
+          hasImageProp: !!attachment.image,
+        });
+
         newFiles.push(attachment);
       } catch (error) {
-        console.error('Error processing file:', error);
+        clientLogger.error('ChatInterface', 'Error processing file', error);
         setFileError('Error preparing file. Please try again.');
         hasError = true;
       }
@@ -290,6 +240,7 @@ export default function ChatInterface({
 
     if (!hasError && newFiles.length > 0) {
       setAttachments(prev => [...prev, ...newFiles]);
+      clientLogger.info('ChatInterface', 'Added attachments', { count: newFiles.length });
     }
   };
 
@@ -316,6 +267,9 @@ export default function ChatInterface({
    */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'document') => {
     if (!e.target.files?.length) return;
+    clientLogger.debug('ChatInterface', `Handling ${type} file selection`, {
+      count: e.target.files.length,
+    });
     processFiles(e.target.files);
     e.target.value = '';
   };
@@ -338,6 +292,7 @@ export default function ChatInterface({
     setIsDragging(false);
 
     if (!e.dataTransfer.files?.length) return;
+    clientLogger.debug('ChatInterface', 'Files dropped', { count: e.dataTransfer.files.length });
     processFiles(e.dataTransfer.files);
   };
 
@@ -347,15 +302,61 @@ export default function ChatInterface({
   const removeAttachment = (index: number) => {
     setAttachments(prev => {
       const updated = [...prev];
-      updated.splice(index, 1);
+      const removed = updated.splice(index, 1);
+      clientLogger.debug('ChatInterface', 'Removed attachment', { name: removed[0]?.name });
       return updated;
     });
+  };
+
+  /**
+   * Custom submit handler for sending messages with attachments
+   */
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if ((!input.trim() && attachments.length === 0) || isLoading) return;
+
+    try {
+      // Show loading toast if attachments exist
+      if (attachments.length > 0) {
+        showAttachmentToast(attachments.length);
+        setPendingAttachments(attachments);
+      }
+
+      // Use the built-in submit handler which will send the message
+      handleChatSubmit(e);
+
+      // Clear attachments after sending
+      setAttachments([]);
+    } catch (error) {
+      clientLogger.error('ChatInterface', 'Error sending message', error);
+      setError('Failed to send message. Please try again.');
+    }
+  };
+
+  /**
+   * Shows a toast notification for processing attachments
+   */
+  const showAttachmentToast = (count: number) => {
+    const toastElement = document.createElement('div');
+    toastElement.innerHTML = `
+      <div class="toast toast-top toast-end z-50">
+        <div class="alert alert-info">
+          <Icon icon="carbon:cloud-upload" class="w-5 h-5" />
+          <span>Processing ${count} file(s)...</span>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toastElement);
+    setTimeout(() => toastElement.remove(), 3000);
   };
 
   /**
    * Formats message content with proper handling of code blocks
    */
   const formatMessageContent = (content: string) => {
+    if (!content) return null;
+
     // Split the message by common code block markers
     const parts = content.split(/(```[\s\S]*?```|`[\s\S]*?`)/g);
 
@@ -363,13 +364,14 @@ export default function ChatInterface({
       // Check if this part is a code block
       if (part.startsWith('```') && part.endsWith('```')) {
         const code = part.substring(3, part.length - 3);
-        const language = code.split('\n')[0].trim();
+        const languageMatch = code.match(/^[a-zA-Z0-9_+-]+/);
+        const language = languageMatch ? languageMatch[0].trim() : '';
         const codeContent = language ? code.substring(language.length).trim() : code;
 
         return (
           <pre
             key={i}
-            className="text-neutral-content card !bg-zinc-800 p-3 overflow-x-auto text-sm my-2"
+            className="text-neutral-content card !bg-zinc-800 p-3 overflow-x-auto text-sm my-2 w-fit"
           >
             {language && <div className="text-xs opacity-70 mb-1">$ {language}</div>}
             <code>{codeContent}</code>
@@ -379,7 +381,7 @@ export default function ChatInterface({
       // Check if this part is an inline code snippet
       else if (part.startsWith('`') && part.endsWith('`')) {
         return (
-          <code key={i} className="text-neutral-content card !bg-zinc-800 px-1 rounded">
+          <code key={i} className="text-neutral-content card !bg-zinc-800 px-1 rounded w-fit">
             {part.substring(1, part.length - 1)}
           </code>
         );
@@ -404,113 +406,17 @@ export default function ChatInterface({
   };
 
   /**
-   * Custom submit handler that integrates attachments with useChat
+   * Simplified message rendering - no special handling for streaming
+   * Let the useChat hook handle streaming updates naturally
    */
-  // const handleSubmit = async (e: FormEvent) => {
-  //   e.preventDefault();
-
-  //   if ((!input.trim() && attachments.length === 0) || isLoading) return;
-
-  //   // Create array to hold attachment promises
-  //   const attachmentPromises = attachments.map(async attachment => {
-  //     // Read file as base64
-  //     const base64 = await readFileAsBase64(attachment.file);
-
-  //     return {
-  //       name: attachment.file.name,
-  //       type: attachment.file.type,
-  //       size: attachment.file.size,
-  //       attachmentType: attachment.type,
-  //       content: base64, // Include the actual file content as base64
-  //     };
-  //   });
-
-  //   // Wait for all file reading operations to complete
-  //   const attachmentData =
-  //     attachments.length > 0 ? await Promise.all(attachmentPromises) : undefined;
-
-  //   // Show a toast notification if files are being processed
-  //   if (attachments.length > 0) {
-  //     // You can use any toast library here or daisyUI's toast component
-  //     const toastElement = document.createElement('div');
-  //     toastElement.innerHTML = `
-  //     <div class="toast toast-top toast-end z-50">
-  //       <div class="alert alert-info">
-  //         <Icon icon="carbon:cloud-upload" class="" />
-  //         <span>Processing ${attachments.length} file(s)...</span>
-  //       </div>
-  //     </div>
-  //   `;
-  //     document.body.appendChild(toastElement);
-  //     setTimeout(() => toastElement.remove(), 3000);
-  //   }
-
-  //   // Use append to send the message with text and attachment data
-  //   await append({
-  //     role: 'user',
-  //     content: input,
-  //     data: {
-  //       attachments: attachmentData,
-  //     },
-  //   });
-
-  //   // Clear attachments state
-  //   setAttachments([]);
-
-  //   // Focus back on textarea
-  //   textareaRef.current?.focus();
-  // };
-
-  /**
-   * Renders a message bubble based on role and content
-   */
-  const renderMessageOld = (message: any, index: number) => {
-    const isUserMessage = message.role === 'user';
-    const isFirstMessage = index === 0;
-
-    return (
-      <div
-        key={message.id || index}
-        className={`chat ${isFirstMessage ? 'mt-6' : ''} ${
-          isUserMessage ? 'chat-end' : 'chat-start'
-        }`}
-      >
-        {!isMinimized && (
-          <>
-            <div className="chat-image avatar online">
-              <div className="w-8 rounded-full bg-base-300">
-                {isUserMessage ? (
-                  <img className="rounded-full" src={userImage} alt={userName || 'User profile'} />
-                ) : (
-                  <Icon icon={'carbon:bot'} className="w-6 h-6 m-2" />
-                )}
-              </div>
-            </div>
-            <div className="chat-header mb-1">{isUserMessage ? 'You' : 'AI Agent'}</div>
-          </>
-        )}
-        <div
-          className={`${
-            isUserMessage
-              ? 'chat-bubble-primary text-primary-content chat-bubble'
-              : `${isMinimized ? 'text-base-content/90' : 'chat-bubble chat-bubble-accent'}`
-          }`}
-        >
-          {renderMessageContent(message, index, isLoading)}
-        </div>
-      </div>
-    );
-  };
-
   const renderMessage = (message: any, index: number) => {
     const isUserMessage = message.role === 'user';
     const isFirstMessage = index === 0;
-    const messageAttachments = message.data?.attachments;
 
     return (
       <div
         key={message.id || index}
-        className={`chat ${isFirstMessage ? 'mt-6' : ''} ${
+        className={`chat ${isFirstMessage ? 'mt-12' : ''} ${
           isUserMessage ? 'chat-end' : 'chat-start'
         }`}
       >
@@ -535,70 +441,10 @@ export default function ChatInterface({
               : `${isMinimized ? 'text-base-content/90' : 'chat-bubble chat-bubble-accent'}`
           }`}
         >
-          {/* Render attachments if they exist */}
-          {messageAttachments && messageAttachments.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-2">
-              {messageAttachments.map((att: any, idx: number) => (
-                <div key={idx} className="flex items-center gap-1">
-                  {att.attachmentType === 'image' && att.content ? (
-                    <div className="relative group">
-                      <img
-                        src={`data:${att.type};base64,${att.content}`}
-                        alt={att.name}
-                        className="w-16 h-16 object-cover rounded border border-base-300"
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 bg-base-300/80 text-xs p-1 truncate">
-                        {att.name.length > 10 ? `${att.name.substring(0, 8)}...` : att.name}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="badge badge-outline gap-1 items-center">
-                      <Icon
-                        icon={att.attachmentType === 'image' ? 'carbon:image' : 'carbon:document'}
-                        className="w-3 h-3"
-                      />
-                      <span className="text-xs">
-                        {att.name.length > 15 ? `${att.name.substring(0, 12)}...` : att.name}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Render the main message content */}
-          {renderMessageContent(message, index, isLoading)}
+          {typeof message.content === 'string' ? formatMessageContent(message.content) : null}
         </div>
       </div>
     );
-  };
-
-  /**
-   * Renders message content based on its format (text, parts, or loading)
-   */
-  const renderMessageContent = (message: any, index: number, isLoading: boolean) => {
-    // Message is still loading
-    if (isLoading && message.role === 'assistant' && index === messages.length - 1) {
-      return <span className="loading loading-dots loading-sm"></span>;
-    }
-
-    // Message has parts (for complex messages)
-    if (message.parts) {
-      return message.parts.map((part: any, i: number) => {
-        if (part.type === 'text') {
-          return formatMessageContent(part.text);
-        }
-        return null;
-      });
-    }
-
-    // Regular text content
-    if (message.content) {
-      return formatMessageContent(message.content);
-    }
-
-    return null;
   };
 
   /**
@@ -628,14 +474,14 @@ export default function ChatInterface({
         accept={ALLOWED_IMAGE_TYPES.join(',')}
         multiple
       />
-      <input
+      {/* <input
         type="file"
         ref={fileInputRef}
         onChange={e => handleFileChange(e, 'document')}
         className="hidden"
         accept={ALLOWED_DOC_TYPES.join(',')}
         multiple
-      />
+      /> */}
 
       {/* File upload buttons */}
       <button
@@ -647,7 +493,7 @@ export default function ChatInterface({
       >
         <Icon icon="carbon:image" className="w-4 h-4" />
       </button>
-      <button
+      {/* <button
         type="button"
         className="btn btn-xs btn-ghost btn-circle"
         onClick={() => fileInputRef.current?.click()}
@@ -655,60 +501,7 @@ export default function ChatInterface({
         title="Upload documents (PDF, Word)"
       >
         <Icon icon="iconamoon:attachment-light" className="w-4 h-4" />
-      </button>
-    </div>
-  );
-
-  /**
-   * Renders the model selector UI
-   */
-  const renderModelSelector = () => (
-    <div className="absolute gap-4 w-full z-30 backdrop-blur-lg flex items-center overflow-x-auto justify-between py-1 px-3 border-transparent border-[1px] border-b-zinc-400/20">
-      {/* 3 circles for Apple browser reference */}
-      <div className="flex items-center gap-1 z-10">
-        <div className="w-3 h-3 rounded-full bg-red-500* btn min-h-2 btn-xs btn-primary btn-circle"></div>
-        <div className="w-3 h-3 rounded-full bg-yellow-500* btn min-h-2 btn-xs btn-secondary btn-circle"></div>
-        <div className="w-3 h-3 rounded-full bg-green-500* btn min-h-2 btn-xs btn-accent btn-circle"></div>
-      </div>
-      <div className="flex items-center gap-3">
-        {isAuth &&
-          agents.map((agent, index) => (
-            <div key={index} className="agent-item">
-              {agent.name}
-            </div>
-          ))}
-        <div className="flex items-center gap-3">
-          <Icon icon={icon} className="w-5 h-5" />
-          <select
-            className="select w-max select-sm select-bordered"
-            value={provider}
-            onChange={e => {
-              const newProvider = e.target.value as AIProvider;
-              setProvider(newProvider);
-            }}
-            disabled={isLoading}
-          >
-            {Object.keys(availableProviders).map(p => (
-              <option key={p} value={p} className="flex items-center">
-                {availableProviders[p as AIProvider].name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <select
-          className="select w-fit select-sm select-bordered"
-          value={model}
-          onChange={e => setModel(e.target.value)}
-          disabled={isLoading}
-        >
-          {provider &&
-            availableProviders[provider]?.models.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-        </select>
-      </div>
+      </button> */}
     </div>
   );
 
@@ -729,6 +522,7 @@ export default function ChatInterface({
             <Icon icon="carbon:warning" className="w-6 h-6" />
             <span>Error: {error}</span>
             <button className="btn btn-sm btn-ghost" onClick={() => setError(null)}>
+              <Icon icon="carbon:close" className="w-4 h-4 mr-2*" />
               Close
             </button>
           </div>
@@ -743,6 +537,10 @@ export default function ChatInterface({
           <div className="alert alert-error">
             <Icon icon="carbon:warning" className="w-5 h-5" />
             <span>{fileError}</span>
+            <button className="btn btn-sm btn-ghost" onClick={() => setFileError(null)}>
+              <Icon icon="carbon:close" className="w-4 h-4 mx-2" />
+              Close
+            </button>
           </div>
         </div>
       )}
@@ -752,7 +550,7 @@ export default function ChatInterface({
         <div className="px-4 py-2 flex flex-wrap gap-3 border-t border-base-300/20">
           {attachments.map((attachment, index) => (
             <div key={index} className="relative group">
-              {attachment._metadata?.type === 'image' ? (
+              {attachment.type === 'image' ? (
                 <div className="w-10 h-10 rounded overflow-hidden border border-base-200">
                   <img
                     src={attachment.url}
@@ -782,11 +580,11 @@ export default function ChatInterface({
 
       {/* Input area */}
       <form
-        onSubmit={e => handleChatSubmit(e, { experimental_attachments: attachments })}
-        className={`${isMinimized ? 'p-2' : 'p-4'} max-sm:p-2 pt-0 `}
+        onSubmit={handleSubmit}
+        className={`${isMinimized ? 'p-2' : 'p-4'} max-sm:p-2 pt-0 max-w-[1200px] w-full mx-auto `}
       >
         <div
-          className={`card hover:!border-base-content/50 border-[0.9px] !bg-base-200 flex flex-col rounded-xl ${
+          className={`card hover:!border-base-content/50 border-[0.9px] !bg-base-300 flex flex-col my-4 mx-2 max-sm:m-0 rounded-xl ${
             isDragging ? 'border-primary border-dashed' : 'border-base-300'
           }`}
           onDragEnter={handleDragEnter}
@@ -807,7 +605,7 @@ export default function ChatInterface({
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleChatSubmit(e as any);
+                  handleSubmit(e as any);
                 }
               }}
             />
@@ -836,23 +634,9 @@ export default function ChatInterface({
   );
 }
 
-const readFileAsBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        // Get only the base64 part (remove prefix like "data:image/jpeg;base64,")
-        const base64String = reader.result.split(',')[1];
-        resolve(base64String);
-      } else {
-        reject(new Error('Failed to convert file to base64'));
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
-
+/**
+ * Formats a file size from bytes to a human-readable string
+ */
 const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';

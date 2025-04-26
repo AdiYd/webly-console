@@ -5,7 +5,6 @@ import { signIn, getProviders } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/ui/icon';
 import Link from 'next/link';
-import { clientFirebase } from '@/lib/firebase/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { setDoc, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase-client';
@@ -76,10 +75,6 @@ export default function SignUp() {
     setIsLoading(true);
 
     try {
-      if (!clientFirebase.app || !auth || !db) {
-        throw new Error('Firebase is not properly initialized');
-      }
-
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 

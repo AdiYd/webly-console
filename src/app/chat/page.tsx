@@ -7,6 +7,7 @@ import 'react-resizable/css/styles.css';
 import { useBreakpoint } from '@/hooks/use-screen';
 import { useSession } from 'next-auth/react';
 import { AIProvider, useOrganization } from '@/context/OrganizationContext';
+import { useRouter } from 'next/navigation';
 
 // Define a unified state interface for better organization
 interface ChatUIState {
@@ -61,6 +62,8 @@ export default function ChatPage() {
   const [isMounted, setIsMounted] = useState(false);
   const { agents, availableProviders, isAuth, model, provider, setProvider, setModel, icon } =
     useOrganization();
+
+  const navigate = useRouter();
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -267,12 +270,12 @@ export default function ChatPage() {
         if (containerRef.current) {
           const containerRect = containerRef.current.getBoundingClientRect();
           const parentWidth = containerRect.width + chatUI.dimensions.width;
-          const maxWidth = parentWidth - chatUI.position.x - 20;
+          const maxWidth = containerRect.width - chatUI.position.x - 20;
           const maxHeight = containerRect.height - chatUI.position.y - 0;
 
           updateNestedState('dimensions', {
             width: Math.min(newWidth, maxWidth),
-            height: Math.min(newHeight, maxHeight),
+            height: chatUI.display.isPinned ? maxHeight : Math.min(newHeight, maxHeight),
           });
         }
       }
@@ -351,6 +354,13 @@ export default function ChatPage() {
     updateNestedState('display', {
       isPinned: !chatUI.display.isPinned,
     });
+
+    if (!chatUI.display.isPinned) {
+      const maxHeight = windowSize.height - chatUI.position.y - 0;
+      updateNestedState('dimensions', {
+        height: maxHeight,
+      });
+    }
   };
 
   const renderModelSelector = () => (
@@ -358,14 +368,14 @@ export default function ChatPage() {
       className={`
       ${
         chatUI.display.isMinimized ? 'relative' : 'absolute'
-      } gap-4 w-full z-30 backdrop-blur-lg flex items-center overflow-x-auto justify-between py-1 px-3 border-transparent border-[1px] border-b-zinc-400/20
+      } gap-4 w-full backdrop-blur-lg flex items-center overflow-x-auto justify-between py-1 px-3 border-transparent border-[1px] border-b-zinc-400/20
       drag-handle  ${
         chatUI.display.isFullscreen || chatUI.display.isPinned ? 'cursor-default' : 'cursor-move'
       } flex items-center justify-between px-3 z-50`}
       onMouseDown={handleMouseDown}
     >
       {/* 3 circles for Apple browser reference */}
-      <div className="flex items-center gap-1 z-10">
+      <div onClick={() => navigate.push('/')} className="flex items-center gap-1 z-10">
         <div className="w-3 h-3 rounded-full bg-red-500* btn min-h-2 btn-xs btn-primary btn-circle"></div>
         <div className="w-3 h-3 rounded-full bg-yellow-500* btn min-h-2 btn-xs btn-secondary btn-circle"></div>
         <div className="w-3 h-3 rounded-full bg-green-500* btn min-h-2 btn-xs btn-accent btn-circle"></div>
@@ -468,7 +478,7 @@ export default function ChatPage() {
     <div
       ref={containerRef}
       style={{ height: isMobile ? '90vh' : '' }}
-      className="flex pt-2 w-full h-[calc(100vh-3rem)] transition-[width] relative"
+      className="flex py-1 w-full h-screen h-[calc(100vh-3rem)]* overflow-hidden transition-[width] relative"
     >
       {!isMobile ? (
         <>
@@ -479,8 +489,8 @@ export default function ChatPage() {
                 ? 'h-fit flex-shrink-0'
                 : isMobile
                 ? 'overflow-hidden flex-shrink-0'
-                : 'h-full overflow-hidden flex-shrink-0'
-            } py-1 z-10 flex flex-col relative`}
+                : 'h-[fill-available] overflow-hidden flex-shrink-0'
+            } py-1 z-40 flex flex-col relative `}
             style={
               !chatUI.display.isFullscreen && !chatUI.display.isMinimized
                 ? {
@@ -498,14 +508,14 @@ export default function ChatPage() {
               ref={chatWindowRef}
               className={`${
                 chatUI.display.isFullscreen
-                  ? 'fixed inset-4 h-[fill-available] z-50 mt-12 mb-16*'
-                  : 'relative z-20 max-h-[fill-available]'
+                  ? 'fixed inset-4 h-[fill-available] z-50 mt-12* mb-16*'
+                  : 'relative z-20 h-[fill-available]'
               } `}
               style={
                 !chatUI.display.isFullscreen && !chatUI.display.isMinimized
                   ? {
                       width: '100%',
-                      height: chatUI.dimensions.height,
+                      height: chatUI.display.isPinned ? '' : chatUI.dimensions.height,
                       transition:
                         chatUI.interaction.isDragging || chatUI.interaction.isResizing
                           ? 'none'
@@ -538,14 +548,17 @@ export default function ChatPage() {
                     ? 'shadow-sm shadow-orange-500 hover:shadow-lg hover:shadow-amber-400'
                     : ''
                 }
-                !bg-base-100 overflow-hidden border border-base-300 transition-shadow h-full`}
+                !bg-base-200 overflow-hidden border border-base-300 transition-shadow h-full`}
               >
                 {renderModelSelector()}
-                {!chatUI.display.isMinimized && (
-                  <div className="h-full overflow-hidden">
-                    <ChatInterface isMinimized={!chatUI.display.isFullscreen} />
-                  </div>
-                )}
+
+                <div
+                  style={{ display: !chatUI.display.isMinimized ? '' : 'none' }}
+                  className="h-full overflow-hidden"
+                >
+                  <ChatInterface isMinimized={!chatUI.display.isFullscreen} />
+                </div>
+
                 {!chatUI.display.isFullscreen && !chatUI.display.isMinimized && (
                   <div
                     className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center"
@@ -560,10 +573,14 @@ export default function ChatPage() {
 
           <div
             id="element-container"
-            className="flex-1 h-full overflow-auto px-2 py-1 backdrop-blur-sm"
+            className="flex-1 h-full overflow-auto px-0.5 py-1 backdrop-blur-sm"
             style={chatUI.display.isFullscreen || isMobile ? { display: 'none' } : {}}
           >
-            <div style={{ borderRadius: '0.5rem' }} className="card rounded-md h-full bg-base-100">
+            <div
+              // data-theme="cupcake"
+              style={{ borderRadius: '0.5rem' }}
+              className="card rounded-md h-full bg-base-100* z-20"
+            >
               <div className="card-body">
                 <h2 className="card-title">Content Area</h2>
                 <p>This area will adapt to the remaining space as you resize the chat panel.</p>

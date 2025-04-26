@@ -36,14 +36,12 @@ export default async function RootLayout({
       <body
         className={`${robotoSans.className} ${inter.className} font-sans relative max-w-full overflow-x-hidden min-h-screen flex flex-col`}
       >
-        <SessionProvider session={session}>
+        <SessionProvider refetchInterval={0} refetchOnWindowFocus={false} session={session}>
           <ThemeProvider defaultTheme="system" storageKey="theme">
             <OrganizationContextProvider>
               <BlurDecoratives />
               <Header />
-              <main className="flex-1 z-10 mt-12 mb-18 h-full min-h-[fill-available] flex flex-col">
-                {children}
-              </main>
+              <main className="flex-1 z-10 h-full min-h-screen flex flex-col">{children}</main>
               <Footer />
             </OrganizationContextProvider>
           </ThemeProvider>
