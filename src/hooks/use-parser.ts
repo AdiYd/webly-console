@@ -1,0 +1,165 @@
+'use client';
+
+import { useState, useCallback, useRef } from 'react';
+
+// Types
+type ParsedChunk =
+  | { type: 'text'; content: string }
+  | { type: 'ui'; content: { jsxString: string; logic: any } };
+
+// Parser Hook
+export function useLiveStreamParser() {
+  const [chunks, setChunks] = useState<ParsedChunk[]>([]);
+  const bufferRef = useRef('');
+  const uiBufferRef = useRef('');
+  const insideUIRef = useRef(false);
+  const isProcessingRef = useRef(false);
+
+  // Reset the parser state
+  const reset = useCallback(() => {
+    console.log('Parser: Resetting parser state');
+    setChunks([]);
+    bufferRef.current = '';
+    uiBufferRef.current = '';
+    insideUIRef.current = false;
+    isProcessingRef.current = false;
+  }, []);
+
+  const processToken = useCallback((token: string) => {
+    // Prevent processing if already handling a token (prevents reentrancy issues)
+    if (isProcessingRef.current) {
+      console.warn('Parser: Skipping token processing - already processing');
+      return;
+    }
+
+    try {
+      isProcessingRef.current = true;
+
+      // Debug with length to avoid cluttering console with long buffers
+      console.log(`Parser: Token "${token}"`, {
+        bufferLength: bufferRef.current.length,
+        uiBufferLength: uiBufferRef.current.length,
+        insideUI: insideUIRef.current,
+      });
+
+      // Check for UI start marker - looking for [[[
+      if (!insideUIRef.current && (bufferRef.current + token).endsWith('[[[')) {
+        console.log('Parser: UI section start detected');
+
+        // Get buffer without the marker
+        const newBuffer = bufferRef.current.slice(0, -2); // Remove last 2 chars, token is the 3rd
+
+        // Add any text before the UI section as a chunk
+        if (newBuffer.trim()) {
+          console.log('Parser: Creating text chunk before UI section');
+          setChunks(prev => [...prev, { type: 'text', content: newBuffer.trim() }]);
+        }
+
+        // Clear buffer and start collecting UI content
+        bufferRef.current = '';
+        uiBufferRef.current = '';
+        insideUIRef.current = true;
+        return;
+      }
+
+      // Check for UI end marker - looking for ]]]
+      if (insideUIRef.current && (uiBufferRef.current + token).endsWith(']]]')) {
+        try {
+          // Extract JSON without the end marker
+          const jsonString = (uiBufferRef.current + token).slice(0, -']]]'.length);
+          console.log('Parser: UI section end detected, parsing JSON');
+
+          const parsed = JSON.parse(jsonString.trim());
+
+          if (parsed.jsxString && parsed.logic) {
+            console.log('Parser: Adding UI component chunk');
+            setChunks(prev => [...prev, { type: 'ui', content: parsed }]);
+          } else {
+            console.warn('Parser: Invalid UI component format');
+            // Fall back to text if format is invalid
+            setChunks(prev => [
+              ...prev,
+              {
+                type: 'text',
+                content: `[[[${jsonString}]]]`,
+              },
+            ]);
+          }
+        } catch (err) {
+          console.error('Parser: JSON parse error', err);
+          // Show the raw content if JSON parsing fails
+          setChunks(prev => [
+            ...prev,
+            {
+              type: 'text',
+              content: `[[[${uiBufferRef.current}]]]`,
+            },
+          ]);
+        }
+
+        // Reset UI parsing state
+        insideUIRef.current = false;
+        uiBufferRef.current = '';
+        return;
+      }
+
+      // If inside UI section, add to UI buffer
+      if (insideUIRef.current) {
+        uiBufferRef.current += token;
+        return;
+      }
+
+      // Regular text processing
+      bufferRef.current += token;
+
+      // Create new text chunk at sentence-ending punctuation or newline
+      if (token === '.' || token === '!' || token === '?' || token === '\n') {
+        if (bufferRef.current.trim()) {
+          console.log('Parser: Creating text chunk at punctuation');
+          setChunks(prev => [
+            ...prev,
+            {
+              type: 'text',
+              content: bufferRef.current.trim(),
+            },
+          ]);
+          bufferRef.current = '';
+        }
+      }
+    } finally {
+      isProcessingRef.current = false;
+    }
+  }, []);
+
+  const finalize = useCallback(() => {
+    console.log('Parser: Finalizing');
+
+    // Add any remaining text in buffer
+    if (bufferRef.current.trim()) {
+      setChunks(prev => [
+        ...prev,
+        {
+          type: 'text',
+          content: bufferRef.current.trim(),
+        },
+      ]);
+      bufferRef.current = '';
+    }
+
+    // Handle unclosed UI section
+    if (insideUIRef.current && uiBufferRef.current.trim()) {
+      console.warn('Parser: Unclosed UI section on finalize');
+      setChunks(prev => [
+        ...prev,
+        {
+          type: 'text',
+          content: `[[[${uiBufferRef.current}]]]`,
+        },
+      ]);
+      uiBufferRef.current = '';
+      insideUIRef.current = false;
+    }
+  }, []);
+
+  return { chunks, processToken, finalize, reset };
+}

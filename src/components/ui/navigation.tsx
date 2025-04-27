@@ -66,12 +66,18 @@ function NavLink({ href, children, className }: NavLinkProps) {
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isClientReady, setIsClientReady] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const session = useSession();
   const { isDesktop } = useBreakpoint();
   // Use placeholder hook for now, replace with actual useOrganization() when context is ready
   const { currentOrganization, organizations, switchOrganization } = useOrganization();
   // const { currentOrganization, organizations, switchOrganization } = useOrganization();
+
+  // Prevent hydration mismatch by deferring client-side rendering
+  useEffect(() => {
+    setIsClientReady(true);
+  }, []);
 
   // Function to get badge color based on organization ID or index
   const getOrgBadgeColor = (orgId: string): string => {
@@ -113,7 +119,14 @@ export function Navigation() {
 
   if (session.status === 'authenticated') {
     // --- Organization Switcher Logic ---
-    if (isDesktop && currentOrganization && organizations && organizations.length > 0) {
+    // Only render organization UI after client hydration
+    if (
+      isClientReady &&
+      isDesktop &&
+      currentOrganization &&
+      organizations &&
+      organizations.length > 0
+    ) {
       if (organizations.length > 1) {
         // Dropdown for multiple organizations
         organizationSwitcher = (
@@ -368,9 +381,9 @@ export function Navigation() {
         <Link href="/" className="text-lg px-2">
           Webly AI
         </Link>
-        {/* Organization Switcher (Desktop Only) */}
+        {/* Organization Switcher (Desktop Only) - Only rendered client-side */}
         <div className="hidden lg:flex items-center">
-          {session.status === 'authenticated' && organizationSwitcher}
+          {isClientReady && session.status === 'authenticated' && organizationSwitcher}
         </div>
       </div>
       <div className="navbar-center hidden lg:flex">

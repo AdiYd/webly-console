@@ -164,18 +164,178 @@ export async function POST(req: Request) {
     Don't explicitly mention these agents unless the user asks about available capabilities.`
         : '';
 
+    // Create pattern for interactive UI in form of react components
+    const interactiveUIPatternOld = `
+    You can present data, graphs, information, forms, options for selections or any other interactive UI to the client using the following format:
+    <InteractiveUIRactComponent>
+        const clientUI = ({ callback }) => {
+            const [state, setState] = React.useState({
+                name: '',
+                email: '',
+                option: 'option1',
+            });
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setState(prevState => ({
+                    ...prevState,
+                    [name]: value,
+                }));
+            };
+
+            const handleSubmit = () => {
+                callback({
+                    name: state.name,
+                    email: state.email,
+                    option: state.option,
+                });
+            };
+
+            return (
+                <div className="card w-full max-w-md shadow-xl bg-base-100">
+                    <div className="card-body">
+                        <h2 className="card-title text-2xl font-bold">User Form</h2>
+                        <p className="text-base-content">Enter your details below:</p>
+
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Name</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="name"
+                                placeholder="Your Name"
+                                className="input input-bordered"
+                                value={state.name}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Email</span>
+                            </label>
+                            <input
+                                type="email"
+                                name="email"
+                                placeholder="Your Email"
+                                className="input input-bordered"
+                                value={state.email}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Option</span>
+                            </label>
+                            <select
+                                className="select select-bordered"
+                                name="option"
+                                value={state.option}
+                                onChange={handleChange}
+                            >
+                                <option value="option1">Option 1</option>
+                                <option value="option2">Option 2</option>
+                                <option value="option3">Option 3</option>
+                            </select>
+                        </div>
+
+                        <div className="card-actions justify-end mt-4">
+                            <button className="btn btn-primary" onClick={handleSubmit}>
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+    </InteractiveUIRactComponent>
+    Important:
+    1. If you use 'callback' function, you will receive the data in the next message as a JSON object.
+    2. Use Tailwind CSS classes and daisyUI components to create the UI.
+    3. Don't use any other libraries or frameworks for UI components.
+    4. Don't use any other libraries or frameworks for UI components or text / comments between the brackets.
+    5. Use it for informative, interactive, and engaging responses.
+    6. You can render cards, buttons, forms, tables, graphs and any other UI elements with visualy apealing style and typography.
+    7. When the client ask to "show" or "display" something, use this format to create a UI component.
+    `;
+    const interactiveUIPattern = `
+🎨 Dynamic UI Injection for Live Streaming
+
+You can create dynamic, interactive UI components inside the conversation by using this format:
+
+1. Whenever you want to inject a UI component (such as a form, card, options, etc.), wrap a JSON object inside triple brackets: [[[ ... ]]].
+2. The JSON object must contain:
+   - "jsxString": A string of JSX-like HTML that defines the visual structure using TailwindCSS and DaisyUI classes.
+   - "logic": A JSON object defining states and actions (e.g., button clicks, form submissions).
+
+Example:
+
+Here is the form you requested:
+
+[[[
+{
+  "jsxString": "<div className='card w-full max-w-md bg-base-100 shadow-xl p-6'> \
+    <h2 className='text-2xl font-bold mb-4'>User Information</h2> \
+    <input id='name' type='text' placeholder='Name' className='input input-bordered w-full mb-3' /> \
+    <input id='email' type='email' placeholder='Email' className='input input-bordered w-full mb-3' /> \
+    <button id='submitBtn' className='btn btn-primary w-full'>Submit</button> \
+  </div>",
+  "logic": {
+    "states": {
+      "name": "",
+      "email": ""
+    },
+    "actions": {
+      "submitForm": {
+        "targetId": "submitBtn",
+        "collectFrom": ["name", "email"],
+        "actionType": "submitForm"
+      }
+    }
+  }
+}
+]]]
+
+Please fill out the form!
+
+---
+
+📋 Important Rules:
+
+- Always use [[[ ... ]]] to wrap interactive UI injections.
+- Only TailwindCSS and DaisyUI classes are allowed for styling.
+- Do not embed full React components or JavaScript functions inside the JSX.
+- Separate dynamic behavior (states, actions) inside the "logic" section.
+- Use HTML-like tags: <div>, <input>, <button>, <select>, etc.
+- Insert UI elements naturally where they enhance conversation (e.g., after a user request or a helpful suggestion).
+
+---
+
+🎨 Tips for Better Design:
+
+- Use nice card layouts: \`card\`, \`shadow-md\`, \`rounded-lg\`, \`p-6\`
+- Add margin or padding using \`mb-4\`, \`gap-4\`
+- Choose typography classes like \`text-lg\`, \`text-2xl\`, \`font-bold\`
+- Always prefer clean, mobile-responsive structures.
+
+---
+
+✅ Summary:
+
+Use this format to dynamically create smooth, beautiful, live interactive UI inside the chat — enriching the conversation and making it engaging for the client.
+`;
+
     // Combine the prompts
     const combinedSystemPrompt =
       mappedAgents.length > 0
-        ? `${firestoreSystemPrompt}\n\n${agentsSystemPrompt}`
-        : firestoreSystemPrompt;
+        ? `${firestoreSystemPrompt}\n\n${agentsSystemPrompt}\n\n${interactiveUIPattern}`
+        : `${firestoreSystemPrompt}\n\n${interactiveUIPattern}`;
 
     // Select the appropriate model based on provider
     const selectedModel =
       provider === 'anthropic' ? anthropic('claude-3-opus-20240229') : openai(model || 'gpt-4o');
-
-    // Track tool invocations during the stream
-    let currentToolInvocations: ToolInvocation[] = [];
 
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.role === 'assistant' && lastMessage.toolInvocations) {
