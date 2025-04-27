@@ -5,6 +5,7 @@ import { Navigation } from '@/components/ui/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrganization } from '@/context/OrganizationContext';
 import { usePathname, useRouter } from 'next/navigation';
+import { clientLogger } from '@/utils/logger';
 
 const Header = () => {
   const [isVisible, setIsVisible] = useState(true);
@@ -14,7 +15,7 @@ const Header = () => {
   const router = useRouter();
   const pathName = usePathname();
   useEffect((): any => {
-    if (pathName.includes('chat')) {
+    if (pathName.includes('chat') || ['/test'].includes(pathName)) {
       setIsVisible(false);
     }
   }, [pathName]);

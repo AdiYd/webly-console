@@ -23,10 +23,10 @@ function initializeAdmin(): AdminFirebase {
     return adminInstance;
   }
 
-  console.log('[Firebase Admin] Initializing...');
+  serverLogger.info('Firebase Admin', 'Initializing...');
   const apps = getApps();
   if (apps.length > 0) {
-    console.log('[Firebase Admin] Using existing app.');
+    serverLogger.info('Firebase Admin', 'Using existing app.');
     const existingApp = apps[0]; // Assuming the first app is the admin app if already initialized
     adminInstance = {
       app: existingApp,
@@ -38,18 +38,26 @@ function initializeAdmin(): AdminFirebase {
   }
 
   try {
+    // Check for the Base64 encoded credentials
     if (!process.env.FIREBASE_ADMIN_SDK_BASE64) {
       throw new Error('Missing Firebase Admin credentials in environment variables');
     }
-    const privateKey = JSON.parse(process.env.FIREBASE_ADMIN_SDK || '');
-    serverLogger.info('Firebase Admin SDK private key:', privateKey);
 
+    // Decode and parse the Base64 credentials
+    const decodedCredentials = Buffer.from(
+      process.env.FIREBASE_ADMIN_SDK_BASE64,
+      'base64'
+    ).toString('utf-8');
+
+    const serviceAccount = JSON.parse(decodedCredentials);
+
+    // Initialize the app with the credentials
     const newApp = initializeApp({
-      credential: cert(privateKey),
-      // storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      credential: cert(serviceAccount),
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
 
-    console.log('[Firebase Admin] Initialized successfully.');
+    serverLogger.info('Firebase Admin', 'Initialized successfully.');
     adminInstance = {
       app: newApp,
       db: getFirestore(newApp),
@@ -58,7 +66,7 @@ function initializeAdmin(): AdminFirebase {
     };
     return adminInstance;
   } catch (error) {
-    console.error('[Firebase Admin] Initialization failed:', error);
+    serverLogger.error('Firebase Admin', 'Initialization failed:', error);
     // Provide a detailed error message but don't crash the application
     throw new Error(
       `Firebase Admin initialization failed: ${
@@ -73,14 +81,15 @@ export function getAdminFirebase(): AdminFirebase {
   try {
     return initializeAdmin();
   } catch (error) {
-    console.error('[Firebase Admin] Could not initialize:', error);
+    serverLogger.error('Firebase Admin', 'Could not initialize:', error);
     // Return a mock object that logs errors when methods are called
     // This allows the application to continue running even if Firebase Admin isn't properly initialized
     const errorHandler =
       (method: string) =>
       (...args: any[]) => {
-        console.error(
-          `[Firebase Admin] Method '${method}' called but Firebase Admin is not initialized`
+        serverLogger.error(
+          'Firebase Admin',
+          `Method '${method}' called but Firebase Admin is not initialized`
         );
         throw new Error(`Firebase Admin is not initialized. Cannot call '${method}'`);
       };
@@ -90,6 +99,7 @@ export function getAdminFirebase(): AdminFirebase {
       doc: errorHandler('doc'),
       getDoc: errorHandler('getDoc'),
       setDoc: errorHandler('setDoc'),
+      listCollections: errorHandler('listCollections'),
     } as unknown as Firestore;
 
     return {

@@ -236,6 +236,7 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
   const [name, setName] = useState(agent?.name || '');
   const [role, setRole] = useState(agent?.role || '');
   const [description, setDescription] = useState(agent?.description || '');
+  const [prompt, setPrompt] = useState(agent?.prompt || '');
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -258,7 +259,7 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
     e.preventDefault();
     if (!name || !role || !description) return; // Basic validation
 
-    onSave({ avatar, name, role, description }, agent?.id);
+    onSave({ avatar, name, role, description, prompt }, agent?.id);
     onClose();
   };
 

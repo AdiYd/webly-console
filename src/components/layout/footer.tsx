@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 
 const Footer = () => {
   const pathName = usePathname();
-  if (pathName.includes('chat')) {
+  if (pathName.includes('chat') || ['/test'].includes(pathName)) {
     return null; //
   }
 

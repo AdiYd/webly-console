@@ -7,8 +7,6 @@ import { google } from '@ai-sdk/google';
 import { z } from 'zod'; // Import zod for schema validation
 import { auth } from '@/auth'; // Import auth for session handling
 import { serverLogger } from '@/utils/logger';
-import { Console } from 'console';
-import { getAdminFirebase } from '@/lib/firebase/firebase-admin';
 
 // API key validation helper
 const getApiKey = (provider: string): string => {

@@ -19,7 +19,7 @@
     "@google/generative-ai": "^0.24.0",
     "@iconify/react": "^5.2.1",
     "@next/font": "^14.2.15",
-    "ai": "^4.3.5",
+    "ai": "^4.3.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^10.6.0",

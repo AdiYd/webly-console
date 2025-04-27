@@ -22,6 +22,7 @@ export interface Agent {
   name: string;
   role: string;
   description: string;
+  prompt: string;
 }
 
 // Define the AI parameters interface
