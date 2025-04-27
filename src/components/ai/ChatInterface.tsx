@@ -6,6 +6,7 @@ import { Icon } from '@iconify/react';
 import { useSession } from 'next-auth/react';
 import { useOrganization } from '@/context/OrganizationContext';
 import { clientLogger } from '@/utils/logger';
+import { StreamedMessage } from './streamedMessage';
 
 // File handling constants
 const MAX_FILE_SIZE_MB = 20;
@@ -515,7 +516,20 @@ export default function ChatInterface({
       >
         {messages.length === 0
           ? renderEmptyState()
-          : messages.map((message, index) => renderMessage(message, index))}
+          : messages.map((message: any, index) => {
+              console.log('Chat: Rendering message', {
+                id: message.id,
+                role: message.role,
+                index,
+                contentExcerpt:
+                  message.content.slice(0, 50) + (message.content.length > 50 ? '...' : ''),
+              });
+              return (
+                <div style={{ marginTop: index === 0 ? '3rem' : '0' }} key={message.id || index}>
+                  <StreamedMessage key={message.id} role={message.role} content={message.content} />
+                </div>
+              );
+            })}
 
         {error && !isLoading && (
           <div className="alert alert-error shadow-lg mt-2">

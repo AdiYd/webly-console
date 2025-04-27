@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react';
 import { clientLogger } from '@/utils/logger';
 import { useOrganization } from '@/context/OrganizationContext';
 import React from 'react'; // Added explicit React import for the dynamic component
-import { StreamedMessage } from './streamedMessage';
+import { StreamedMessage } from '@/components/ai/streamedMessage';
 import { Message } from 'ai';
 
 const exampleMessages = [
@@ -23,6 +23,11 @@ const exampleMessages = [
     content: 'Feel free to ask about any specific operations you need help with!',
   },
   {
+    id: '2.5',
+    role: 'assistant',
+    content: 'Now, please confirm your shipping address',
+  },
+  {
     id: '3',
     role: 'assistant',
     content: `
@@ -30,7 +35,7 @@ const exampleMessages = [
 
   [[[
   {
-    "jsxString": "<div className='card w-full max-w-lg bg-success text-success-content shadow-md p-6 mb-6'> \
+    "jsxString": "<div className='card w-full max-w-lg !bg-success text-success-content shadow-md p-6 mb-6'> \
       <h2 className='text-2xl font-bold mb-2'>Order Summary</h2> \
       <p className='text-base'>Product: Wireless Headphones</p> \
       <p className='text-base'>Price: $199.99</p> \
@@ -44,7 +49,7 @@ const exampleMessages = [
 
   [[[
   {
-    "jsxString": "<div className='card w-full max-w-md bg-base-100 shadow-xl p-6'> \
+    "jsxString": "<div className='card w-full flex flex-col gap-4 max-w-md bg-base-100 shadow-xl p-6'> \
       <h2 className='text-xl font-semibold mb-4'>Shipping Address</h2> \
       <input id='fullName' type='text' placeholder='Full Name' className='input input-bordered w-full mb-3' /> \
       <input id='address' type='text' placeholder='Street Address' className='input input-bordered w-full mb-3' /> \

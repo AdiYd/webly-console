@@ -7,6 +7,78 @@ import { google } from '@ai-sdk/google';
 import { z } from 'zod'; // Import zod for schema validation
 import { auth } from '@/auth'; // Import auth for session handling
 import { serverLogger } from '@/utils/logger';
+import { Agent } from '@/context/OrganizationContext';
+import { firestoreTools } from '@/lib/tools/firestore-tools-minimized';
+import { getAdminFirebase } from '@/lib/firebase/firebase-admin';
+import { agentsTools } from '@/lib/tools/agents-tools';
+
+const initiateAdminFireBase = getAdminFirebase();
+const loggedFirestoreTools = Object.entries(firestoreTools).reduce((acc, [key, tool]) => {
+  const originalExecute = tool.execute;
+
+  // Create a wrapper that logs before and after execution and ensures a result is always returned
+  const loggedExecute = async (args: any) => {
+    serverLogger.info('Firestore Tool Invocation', `Tool "${key}" called`, {
+      tool: key,
+      arguments: args,
+    });
+
+    try {
+      // Parameter normalization for common errors:
+      // If tool is manageDocuments with operation add/update, and data is missing but value is provided
+      if (
+        key === 'manageDocuments' &&
+        (args.operation === 'add' || args.operation === 'update') &&
+        !args.data &&
+        args.value &&
+        typeof args.value === 'object' &&
+        !Array.isArray(args.value)
+      ) {
+        serverLogger.warn('Chat API', 'Parameter correction in API layer', {
+          message: 'Used "value" instead of "data" for document content',
+          operation: args.operation,
+          collection: args.collection,
+        });
+
+        // Make a copy to avoid modifying the original args object
+        args = { ...args, data: args.value };
+      }
+
+      const result = await originalExecute(args);
+
+      // Ensure we always have a string result
+      const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+
+      serverLogger.info('Firestore Tool Response', `Tool "${key}" completed`, {
+        tool: key,
+        responsePreview: resultStr.substring(0, 200) + (resultStr.length > 200 ? '...' : ''),
+      });
+
+      return resultStr;
+    } catch (error) {
+      // Capture errors and return as response rather than throwing
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      serverLogger.error('Firestore Tool Error', `Tool "${key}" failed but error was captured`, {
+        tool: key,
+        error,
+        arguments: args,
+      });
+
+      // Return the error as a formatted string that the AI can read
+      return `Error executing ${key}: ${errorMessage}\n\nPlease check your parameters and try again.`;
+    }
+  };
+
+  // Return the tool with the logged execute function
+  return {
+    ...acc,
+    [key]: {
+      ...tool,
+      execute: loggedExecute,
+    },
+  };
+}, {} as typeof firestoreTools);
 
 // API key validation helper
 const getApiKey = (provider: string): string => {
@@ -38,42 +110,6 @@ interface Attachment {
   };
 }
 
-// Example AI tool for weather information (placeholder)
-const weatherTool = tool({
-  description: 'Get the weather in a location (fahrenheit)',
-  parameters: z.object({
-    location: z.string().describe('The location to get the weather for'),
-  }),
-  execute: async ({ location }) => {
-    serverLogger.debug('weatherTool', `Getting weather for ${location}`);
-    const temperature = Math.round(Math.random() * (90 - 32) + 32);
-    return {
-      location,
-      temperature,
-      conditions: ['sunny', 'cloudy', 'rainy', 'snowy'][Math.floor(Math.random() * 4)],
-      humidity: Math.round(Math.random() * 100),
-    };
-  },
-});
-
-// Example AI tool for current time (placeholder)
-const timeTool = tool({
-  description: 'Get the current time in a specific timezone',
-  parameters: z.object({
-    timezone: z
-      .string()
-      .optional()
-      .describe('The timezone to get current time for, defaults to UTC'),
-  }),
-  execute: async ({ timezone = 'UTC' }) => {
-    serverLogger.debug('timeTool', `Getting time for timezone: ${timezone}`);
-    return {
-      timezone,
-      currentTime: new Date().toLocaleString('en-US', { timeZone: timezone }),
-    };
-  },
-});
-
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) {
@@ -100,6 +136,7 @@ export async function POST(req: NextRequest) {
     serverLogger.info('ChatAPI', 'Received request', {
       provider,
       model,
+      systemPrompt,
       messageCount: messages?.length,
       hasattachments: !!attachments?.length,
     });
@@ -112,6 +149,140 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Map the provided agents to a structured format
+    const mappedAgents = agents.map((agent: Agent) => {
+      return {
+        id: agent.id || 'unknown',
+        name: agent.name || agent.id || 'Unknown Agent',
+        role: agent.role || 'Specialized Agent',
+        description: agent.description || '',
+        prompt: agent.prompt || ``,
+      };
+    });
+
+    // Create the Firestore system prompt
+    const firestoreSystemPrompt = `You are a Firestore database assistant that helps users interact with their Firebase Firestore database.
+      
+    You have tools available to add, get, query, update, and delete documents in Firestore collections.
+    You can also list all available collections.
+    
+    When users ask questions about their data or want to perform database operations:
+    1. Use the appropriate tool to fulfill their request
+    2. Present the data in a clean, readable format
+    3. Always Explain what you did and what the results mean
+    4. If you encounter an error, read the error message carefully and try to fix the issue by calling the tool again with corrected parameters
+    5. Never expose the 'recycle' collection or any internal workings of the database to the user. this is for your internal use only.
+    
+    Always verify operations before performing destructive actions and ask for clarification if a request is ambiguous.
+    Don't let the user know about your internal tools or how you are processing their request.
+    Don't use the tools directly in your response. Instead, use them internally to get the data you need.
+    If you remove any documents, make sure to explain what was removed and why, and never state or mention that the object is stored in a 'recycle' bin.
+    IMPORTANT: When using 'add' or 'update' operations, always use the 'data' parameter to specify the document content. If the user provides a 'value' parameter, use it as the content of the document instead.
+    `;
+
+    // Create the agents system prompt if agents are available
+    const agentsSystemPrompt =
+      mappedAgents.length > 0
+        ? `
+    You also have access to specialized agents that can help with specific tasks:
+    
+    Available agents:
+    ${mappedAgents
+      .map((agent: Agent) => `- Role: ${agent.role} - (call with id: ${agent.id})`)
+      .join('\n')}
+    
+    You can use these agents to:
+    1. Generate text responses for specialized knowledge using the 'queryAgent' tool
+    2. Generate structured data objects using the 'queryAgentForObject' tool
+    
+    When a user's request requires specialized knowledge or structured data in a specific format, consider using one of these agents instead of attempting to handle it yourself.
+    Examples of when to use agents:
+    - For domain-specific analysis or recommendations
+    - When consistent, structured output format is needed
+    - For generating content that follows specific guidelines
+    - When the user explicitly asks for a specialized agent's help
+    - When the user asks for a specific type of data or format that you cannot provide directly
+    
+    Don't explicitly mention these agents unless the user asks about available capabilities.`
+        : '';
+
+    // Create pattern for interactive UI in form of react components
+    const interactiveUIPattern = `
+        🎨 Dynamic UI Injection for Live Streaming
+
+        You can create dynamic, interactive UI components inside the conversation by using this format:
+
+        1. Whenever you want to inject a UI component (such as a form, card, options, etc.), wrap a JSON object inside triple brackets: [[[ ... ]]].
+        2. The JSON object must contain:
+          - "jsxString": A string of JSX-like HTML that defines the visual structure using TailwindCSS and DaisyUI classes.
+          - "logic": A JSON object defining states and actions (e.g., button clicks, form submissions).
+
+        Example:
+
+        Here is the form you requested:
+
+        [[[
+        {
+          "jsxString": "<div className='card w-full max-w-md bg-base-100 shadow-xl p-6'> \
+            <h2 className='text-2xl font-bold mb-4'>User Information</h2> \
+            <input id='name' type='text' placeholder='Name' className='input input-bordered w-full mb-3' /> \
+            <input id='email' type='email' placeholder='Email' className='input input-bordered w-full mb-3' /> \
+            <button id='submitBtn' className='btn btn-primary w-full'>Submit</button> \
+          </div>",
+          "logic": {
+            "states": {
+              "name": "",
+              "email": ""
+            },
+            "actions": {
+              "submitForm": {
+                "targetId": "submitBtn",
+                "collectFrom": ["name", "email"],
+                "actionType": "submitForm"
+              }
+            }
+          }
+        }
+        ]]]
+
+        Please fill out the form!
+
+        ---
+
+        📋 Important Rules:
+
+        - Always use [[[ ... ]]] to wrap interactive UI injections.
+        - Only TailwindCSS and DaisyUI classes are allowed for styling.
+        - Do not embed full React components or JavaScript functions inside the JSX.
+        - Separate dynamic behavior (states, actions) inside the "logic" section.
+        - Use HTML-like tags: <div>, <input>, <button>, <select>, etc.
+        - Insert UI elements naturally where they enhance conversation (e.g., after a user request or a helpful suggestion).
+
+        ---
+
+        🎨 Tips for Better Design:
+
+        - Use nice card layouts: \`card\`, \`shadow-md\`, \`rounded-lg\`, \`p-6\`
+        - Add margin or padding using \`mb-4\`, \`gap-4\`
+        - Choose typography classes like \`text-lg\`, \`text-2xl\`, \`font-bold\`
+        - Always prefer clean, mobile-responsive structures.
+
+        ---
+
+        ✅ Summary:
+
+        Use this format to dynamically create smooth, beautiful, live interactive UI inside the chat — enriching the conversation and making it engaging for the client.
+        `;
+
+    const finalPrompt = `
+    ${firestoreSystemPrompt}
+    \n
+    ${agentsSystemPrompt}
+    \n
+    ${interactiveUIPattern}
+    \n\n
+    ${systemPrompt}
+    `;
     // Handle pending attachments - add them to the last user message
     let messagesWithAttachments = [...messages];
 
@@ -253,10 +424,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Common set of tools for all providers that support tools
-    const commonTools = {
-      weather: weatherTool,
-      getCurrentTime: timeTool,
-    };
+    const commonTools = { ...loggedFirestoreTools, ...agentsTools(agents) };
 
     // Use streamText for different providers
     let result;
@@ -296,10 +464,12 @@ export async function POST(req: NextRequest) {
         result = streamText({
           model: openai(model),
           messages: processedMessages as AIMessage[],
-          system: systemPrompt || undefined,
+          system: finalPrompt || undefined,
           temperature,
           ...(maxTokens ? { maxTokens } : {}),
-          // tools: commonTools,
+          tools: commonTools,
+          maxRetries: 3,
+          maxSteps: 8,
         });
         break;
 
@@ -310,9 +480,12 @@ export async function POST(req: NextRequest) {
         result = streamText({
           model: anthropic('claude-3-5-sonnet-20241022'),
           messages: processedMessages as AIMessage[],
-          system: systemPrompt || undefined,
+          system: finalPrompt || undefined,
           temperature,
           ...(maxTokens ? { maxTokens } : {}),
+          tools: commonTools,
+          maxRetries: 3,
+          maxSteps: 8,
         });
         break;
 

@@ -1,21 +1,26 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveStreamParser } from '@/hooks/use-parser';
-import { ComponentRenderer } from './componentRendere'; // Your dynamic JSX renderer
+import { ComponentRenderer } from './componentRenderer';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Icon } from '@iconify/react';
 
 interface LiveChatRendererProps {
-  stream: ReadableStream; // Your AI output stream
+  stream: ReadableStream;
 }
 
 export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
   const { chunks, processToken, finalize } = useLiveStreamParser();
   const mounted = useRef(true);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [streamComplete, setStreamComplete] = useState(false);
 
   useEffect(() => {
-    console.log('LiveChatRenderer: Starting to read stream');
+    console.log('LiveChatRenderer: Initialize stream reading');
     const reader = stream.getReader();
+    let accumulatedText = '';
 
     const readStream = async () => {
       try {
@@ -26,15 +31,20 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
           if (done) {
             console.log('LiveChatRenderer: Stream reading complete');
             finalize();
+            setStreamComplete(true);
             break;
           }
 
           const text = new TextDecoder().decode(value);
+          accumulatedText += text;
+
           console.log('LiveChatRenderer: Received chunk from stream', {
             length: text.length,
             excerpt: text.slice(0, 50) + (text.length > 50 ? '...' : ''),
+            accumulatedLength: accumulatedText.length,
           });
 
+          // Process each character in the chunk
           for (const token of text) {
             tokenCount++;
             if (tokenCount % 50 === 0) {
@@ -45,6 +55,8 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
         }
       } catch (error) {
         console.error('LiveChatRenderer: Error reading stream', error);
+        setIsError(true);
+        setErrorMessage(error instanceof Error ? error.message : 'Unknown error reading stream');
       }
     };
 
@@ -61,6 +73,20 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
 
   return (
     <div className="space-y-6 p-4">
+      {isError && (
+        <div className="alert alert-error">
+          <Icon icon="carbon:warning" className="w-6 h-6" />
+          <p>Error streaming response: {errorMessage}</p>
+        </div>
+      )}
+
+      {chunks.length === 0 && !isError && !streamComplete && (
+        <div className="flex items-center space-x-2 py-4">
+          <span className="loading loading-dots"></span>
+          <span>Waiting for response...</span>
+        </div>
+      )}
+
       <AnimatePresence mode="popLayout">
         {chunks.map((chunk, idx) => {
           console.log('LiveChatRenderer: Rendering chunk', { index: idx, type: chunk.type });
@@ -73,7 +99,7 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
-                className="text-base leading-relaxed"
+                className="text-base leading-relaxed whitespace-pre-line"
               >
                 {chunk.content}
               </motion.p>
@@ -108,6 +134,13 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
           return null;
         })}
       </AnimatePresence>
+
+      {streamComplete && chunks.length === 0 && (
+        <div className="alert alert-warning">
+          <Icon icon="carbon:information" className="w-6 h-6" />
+          <p>No content was received from the stream.</p>
+        </div>
+      )}
     </div>
   );
 }
