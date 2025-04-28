@@ -517,16 +517,52 @@ export default function ChatInterface({
         {messages.length === 0
           ? renderEmptyState()
           : messages.map((message: any, index) => {
-              console.log('Chat: Rendering message', {
-                id: message.id,
+              // --- MODIFIED CONTENT EXTRACTION ---
+              // Handle both string content and the AI SDK's array format
+              let messageContent = '';
+              if (typeof message.content === 'string') {
+                messageContent = message.content;
+              } else if (Array.isArray(message.content)) {
+                // Find all text parts in the array and join them
+                messageContent = message.content
+                  .filter((part: any) => part.type === 'text')
+                  .map((part: any) => part.text)
+                  .join('\n');
+              } else if (typeof message === 'string') {
+                // Handle cases where the message itself might just be a string
+                messageContent = message;
+              }
+              // --- END MODIFIED CONTENT EXTRACTION ---
+
+              // --- DEBUG LOGGING ---
+              clientLogger.debug('ChatInterface: Preparing to render StreamedMessage', 'data', {
+                messageId: message.id || `msg-${index}`,
                 role: message.role,
-                index,
-                contentExcerpt:
-                  message.content.slice(0, 50) + (message.content.length > 50 ? '...' : ''),
+                contentLength: messageContent?.length || 0,
+                isStreaming: status === 'streaming',
+                messageIndex: index,
+                isLastMessage: index === messages.length - 1,
               });
+              // --- END DEBUG LOGGING ---
+
+              // Ensure role is valid before passing
+              const validRole =
+                message.role === 'user' || message.role === 'assistant'
+                  ? message.role
+                  : 'assistant'; // Default to assistant if role is invalid/missing
+
               return (
-                <div style={{ marginTop: index === 0 ? '3rem' : '0' }} key={message.id || index}>
-                  <StreamedMessage key={message.id} role={message.role} content={message.content} />
+                // Use message.id for the key if available, otherwise index
+                <div
+                  style={{ marginTop: index === 0 ? '3rem' : '0' }}
+                  key={message.id || `msg-${index}`}
+                >
+                  {/* Pass the extracted string content */}
+                  <StreamedMessage
+                    key={message.id || `streamed-${index}`}
+                    role={validRole} // Pass the validated role
+                    content={messageContent || ''} // Ensure content is always a string, even if empty
+                  />
                 </div>
               );
             })}

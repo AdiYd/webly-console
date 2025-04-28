@@ -523,7 +523,24 @@ export async function POST(req: NextRequest) {
 
     // Return the stream response
     serverLogger.info('ChatAPI', 'Streaming response back to client');
-    return result.toDataStreamResponse();
+    try {
+      const streamResponse = result.toDataStreamResponse();
+      if (!streamResponse) {
+        throw new Error('Failed to generate stream response');
+      }
+      return streamResponse;
+    } catch (error) {
+      serverLogger.error('ChatAPI', 'Error generating stream response', error);
+      return new Response(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : 'Failed to generate stream response',
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
   } catch (error) {
     serverLogger.error('ChatAPI', 'Error in chat endpoint', error);
     return new Response(

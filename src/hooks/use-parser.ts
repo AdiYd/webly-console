@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { clientLogger } from '@/utils/logger';
 
 // Types
 type ParsedChunk =
@@ -14,176 +15,172 @@ export function useLiveStreamParser() {
   const uiBufferRef = useRef('');
   const insideUIRef = useRef(false);
   const isProcessingRef = useRef(false);
+  const lastChunkContentRef = useRef(''); // Track content of the last text chunk
 
   // Reset the parser state
   const reset = useCallback(() => {
-    console.log('Parser: Resetting parser state');
+    clientLogger.debug('Parser: Resetting parser state',''  , '');
     setChunks([]);
     bufferRef.current = '';
     uiBufferRef.current = '';
     insideUIRef.current = false;
     isProcessingRef.current = false;
+    lastChunkContentRef.current = '';
   }, []);
 
   const processToken = useCallback((token: string) => {
-    // Handle case when a full string is passed rather than a single character
-    if (token && token.length > 1) {
-      console.log('Parser: Received full string instead of single token', { 
-        length: token.length,
-        preview: token.slice(0, 30) + (token.length > 30 ? '...' : '')
-      });
-      
-      // Process full string directly if it doesn't contain UI markers
-      if (!token.includes('[[[') && !token.includes(']]]')) {
-        console.log('Parser: Processing simple string without UI markers');
-        setChunks(prev => [...prev, { type: 'text', content: token.trim() }]);
-        return;
-      }
-      
-      // Otherwise process character by character
-      for (let i = 0; i < token.length; i++) {
-        processToken(token[i]);
-      }
-      return;
-    }
+    if (!token || token.length === 0) return;
 
-    // Prevent processing if already handling a token (prevents reentrancy issues)
+    // Process character by character for more accurate parsing
+    if (token.length > 1) {
+      clientLogger.debug('Parser: Processing multi-character token','' ,{ length: token.length });
+      for (let i = 0; i < token.length; i++) {
+        processSingleChar(token[i]);
+      }
+    } else {
+      processSingleChar(token);
+    }
+  }, []);
+
+  // Helper function to process a single character
+  const processSingleChar = useCallback((char: string) => {
+    // Prevent reentrancy issues
     if (isProcessingRef.current) {
-      console.warn('Parser: Skipping token processing - already processing');
+      clientLogger.warn('Parser: Skipping char - already processing','this', { char });
       return;
     }
 
     try {
       isProcessingRef.current = true;
 
-      // Only log occasionally to reduce console spam
-      if (Math.random() < 0.01) {
-        console.log(`Parser: Processing token`, {
-          token: token === '\n' ? '\\n' : token,
-          bufferLength: bufferRef.current.length,
-          uiBufferLength: uiBufferRef.current.length,
-          insideUI: insideUIRef.current
-        });
-      }
-
-      // Check for UI start marker - looking for [[[
-      if (!insideUIRef.current && (bufferRef.current + token).endsWith('[[[')) {
-        console.log('Parser: UI section start detected');
+      // Check for UI section start marker [[[
+      if (!insideUIRef.current && (bufferRef.current + char).endsWith('[[[')) {
+        clientLogger.debug('Parser: UI section start detected', '','');
         
-        // Get buffer without the marker
-        const newBuffer = bufferRef.current.slice(0, -2); // Remove last 2 chars, token is the 3rd
-        
-        // Add any text before the UI section as a chunk
-        if (newBuffer.trim()) {
-          console.log('Parser: Creating text chunk before UI section', { content: newBuffer.trim() });
-          setChunks(prev => [...prev, { type: 'text', content: newBuffer.trim() }]);
+        // Extract text before the marker and create a text chunk if needed
+        const textBeforeMarker = bufferRef.current.slice(0, -2); 
+        if (textBeforeMarker.trim() && textBeforeMarker.trim() !== lastChunkContentRef.current) {
+          clientLogger.debug('Parser: Creating text chunk before UI marker','data', { 
+            text: textBeforeMarker.trim() 
+          });
+          
+          setChunks(prev => [...prev, { type: 'text', content: textBeforeMarker.trim() }]);
+          lastChunkContentRef.current = textBeforeMarker.trim();
         }
         
-        // Clear buffer and start collecting UI content
+        // Reset buffers for UI content
         bufferRef.current = '';
         uiBufferRef.current = '';
         insideUIRef.current = true;
-        return;
+        return; // Marker processed
       }
 
-      // Check for UI end marker - looking for ]]]
-      if (insideUIRef.current && (uiBufferRef.current + token).endsWith(']]]')) {
+      // Check for UI section end marker ]]]
+      if (insideUIRef.current && (uiBufferRef.current + char).endsWith(']]]')) {
+        const jsonString = uiBufferRef.current.slice(0, -2); // Content before ']]]'
+        clientLogger.debug('Parser: UI section end detected, parsing JSON','','');
+        
         try {
-          // Extract JSON without the end marker
-          const jsonString = (uiBufferRef.current + token).slice(0, -(']]]'.length));
-          console.log('Parser: UI section end detected, parsing JSON');
-          
+          // Parse JSON content for UI component
           let parsed;
           try {
             parsed = JSON.parse(jsonString.trim());
           } catch (e) {
-            console.error('Parser: JSON parse error, attempting to fix malformed JSON', e);
-            // Try to fix common JSON formatting issues
+            clientLogger.warn('Parser: Initial JSON parse failed, attempting to fix','', { error: e });
+            // Fix common JSON issues like escaped quotes
             const fixedJson = jsonString.trim()
               .replace(/\\"/g, '"')
               .replace(/\\'/g, "'")
               .replace(/\\\\/g, "\\");
             parsed = JSON.parse(fixedJson);
           }
-          
+
+          // Validate and create UI chunk
           if (parsed && parsed.jsxString && typeof parsed.logic === 'object') {
-            console.log('Parser: Adding UI component chunk');
+            clientLogger.debug('Parser: Adding UI component chunk', '', { parsed });
             setChunks(prev => [...prev, { type: 'ui', content: parsed }]);
           } else {
-            console.warn('Parser: Invalid UI component format', { parsed });
-            // Fall back to text if format is invalid
+            clientLogger.warn('Parser: Invalid UI component format','', { parsed });
             setChunks(prev => [...prev, { 
               type: 'text', 
               content: `[[[${jsonString}]]]` 
             }]);
           }
-        } catch (err) {
-          console.error('Parser: JSON parse error', err);
-          // Show the raw content if JSON parsing fails
+        } catch (err:any) {
+          clientLogger.error('Parser: JSON parse error','', { error: err });
+          // Add the raw content as text if parsing fails
           setChunks(prev => [...prev, { 
             type: 'text', 
-            content: `[[[${uiBufferRef.current}]]]` 
+            content: `[[[${jsonString}]]]` 
           }]);
         }
         
-        // Reset UI parsing state
+        // Reset state after processing UI component
         insideUIRef.current = false;
         uiBufferRef.current = '';
+        bufferRef.current = '';
         return;
       }
 
-      // If inside UI section, add to UI buffer
+      // Append character to the appropriate buffer
       if (insideUIRef.current) {
-        uiBufferRef.current += token;
-        return;
-      }
-
-      // Regular text processing
-      bufferRef.current += token;
-
-      // Create new text chunk at sentence-ending punctuation or newline
-      // or after a reasonable buffer length to ensure text appears promptly
-      if (token === '.' || token === '!' || token === '?' || token === '\n' || 
-          bufferRef.current.length > 80) { // Also chunk after reasonable length
-        if (bufferRef.current.trim()) {
-          console.log('Parser: Creating text chunk', { trigger: token, content: bufferRef.current.trim() });
-          setChunks(prev => [
-            ...prev,
-            {
-              type: 'text', 
-              content: bufferRef.current.trim(),
-            },
-          ]);
-          bufferRef.current = '';
-        }
+        uiBufferRef.current += char;
+      } else {
+        bufferRef.current += char;
       }
     } finally {
       isProcessingRef.current = false;
     }
   }, []);
 
+  // Finalize current buffer into chunks
   const finalize = useCallback(() => {
-    console.log('Parser: Finalizing with remaining buffer', { 
-      bufferContent: bufferRef.current,
+    clientLogger.debug('Parser: Finalize called','data', {
+      bufferLength: bufferRef.current.length,
       insideUI: insideUIRef.current,
-      uiBufferContent: uiBufferRef.current
+      uiBufferLength: uiBufferRef.current.length,
     });
 
-    // Add any remaining text in buffer
-    if (bufferRef.current.trim()) {
-      setChunks(prev => [
-        ...prev,
-        {
-          type: 'text',
-          content: bufferRef.current.trim(),
-        },
-      ]);
-      bufferRef.current = '';
+    // Process remaining text buffer if not inside UI component
+    if (!insideUIRef.current && bufferRef.current.trim()) {
+      const finalContent = bufferRef.current.trim();
+      
+      // Only add as a new chunk if it's different from the last chunk
+      // or if it's a meaningful extension of the last chunk
+      if (finalContent !== lastChunkContentRef.current) {
+        if (finalContent.startsWith(lastChunkContentRef.current) && chunks.length > 0) {
+          // This is an extension of the last chunk, update it instead of adding new
+          const lastChunkIndex = chunks.length - 1;
+          if (chunks[lastChunkIndex].type === 'text') {
+            clientLogger.debug('Parser: Updating last text chunk with new content','','');
+            setChunks(prev => {
+              const updated = [...prev];
+              updated[lastChunkIndex] = { ...updated[lastChunkIndex], content: finalContent } as ParsedChunk;
+              return updated;
+            });
+          } else {
+            // Last chunk wasn't text, add as new chunk
+            clientLogger.debug('Parser: Adding new text chunk (extension after non-text)','','');
+            setChunks(prev => [...prev, { type: 'text', content: finalContent }]);
+          }
+        } else {
+          // This is entirely new content, add as new chunk
+          clientLogger.debug('Parser: Adding new text chunk','', { content: finalContent });
+          setChunks(prev => [...prev, { type: 'text', content: finalContent }]);
+        }
+        
+        lastChunkContentRef.current = finalContent;
+      } else {
+        clientLogger.debug('Parser: Skipping duplicate text chunk','',{ });
+      }
     }
 
-    // Handle unclosed UI section
+    // Handle unclosed UI section as text
     if (insideUIRef.current && uiBufferRef.current.trim()) {
-      console.warn('Parser: Unclosed UI section on finalize - outputting as text');
+      clientLogger.warn('Parser: Unclosed UI section on finalize','data', {
+        content: uiBufferRef.current.slice(0, 30) + '...'
+      });
+      
       setChunks(prev => [
         ...prev,
         {
@@ -191,16 +188,12 @@ export function useLiveStreamParser() {
           content: `[[[${uiBufferRef.current}]]]`,
         },
       ]);
-      uiBufferRef.current = '';
+      
+      // Reset UI state
       insideUIRef.current = false;
+      uiBufferRef.current = '';
     }
-    
-    // Force creation of a text chunk if no chunks were created
-    if (chunks.length === 0 && !bufferRef.current.trim() && !uiBufferRef.current.trim()) {
-      console.warn('Parser: No chunks created after finalizing, adding empty chunk');
-      setChunks([{ type: 'text', content: '' }]);
-    }
-  }, [chunks.length]);
+  }, [chunks]);
 
   return { chunks, processToken, finalize, reset };
 }

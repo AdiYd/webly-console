@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useLiveStreamParser } from '@/hooks/use-parser';
+import { useLiveStreamParser } from '@/hooks/use-Parser';
 import { ComponentRenderer } from './componentRenderer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '@iconify/react';
@@ -11,32 +11,59 @@ interface LiveChatRendererProps {
 }
 
 export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
-  const { chunks, processToken, finalize } = useLiveStreamParser();
+  const { chunks, processToken, finalize, reset } = useLiveStreamParser();
   const mounted = useRef(true);
+  const lastProcessedTime = useRef(Date.now());
+  const processingComplete = useRef(false);
   const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [streamComplete, setStreamComplete] = useState(false);
+  const [streamedText, setStreamedText] = useState(''); // Track total streamed text for debugging
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     console.log('LiveChatRenderer: Initialize stream reading');
+    // Reset parser state on mount
+    reset();
+
     const reader = stream.getReader();
     let accumulatedText = '';
+    lastProcessedTime.current = Date.now();
+
+    // If no activity for 2 seconds, consider stream complete
+    const inactivityTimer = setInterval(() => {
+      if (!processingComplete.current && Date.now() - lastProcessedTime.current > 2000) {
+        console.log('LiveChatRenderer: Inactivity timeout - finalizing');
+        finalize();
+        setStreamComplete(true);
+        processingComplete.current = true;
+        clearInterval(inactivityTimer);
+      }
+    }, 500);
 
     const readStream = async () => {
       try {
+        setIsLoading(true);
         let tokenCount = 0;
+
         while (mounted.current) {
           const { done, value } = await reader.read();
 
           if (done) {
             console.log('LiveChatRenderer: Stream reading complete');
+            // Ensure we finalize even if no chunks were processed
             finalize();
             setStreamComplete(true);
+            processingComplete.current = true;
             break;
           }
 
           const text = new TextDecoder().decode(value);
+          if (!text || text.length === 0) continue;
+
           accumulatedText += text;
+          setStreamedText(accumulatedText);
+          lastProcessedTime.current = Date.now();
 
           console.log('LiveChatRenderer: Received chunk from stream', {
             length: text.length,
@@ -52,11 +79,35 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
             }
             processToken(token);
           }
+
+          // Finalize after processing this chunk to ensure partial content appears
+          // This is important for UI components
+          if (text.includes(']]]')) {
+            console.log('LiveChatRenderer: UI component detected, finalizing current buffer');
+            finalize();
+          } else if (tokenCount % 100 === 0) {
+            // Periodically finalize to show partial content
+            finalize();
+          }
+
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('LiveChatRenderer: Error reading stream', error);
         setIsError(true);
+        setIsLoading(false);
         setErrorMessage(error instanceof Error ? error.message : 'Unknown error reading stream');
+        // Still try to display any content that was received before the error
+        finalize();
+      } finally {
+        clearInterval(inactivityTimer);
+        setIsLoading(false);
+
+        if (mounted.current && !processingComplete.current) {
+          finalize();
+          setStreamComplete(true);
+          processingComplete.current = true;
+        }
       }
     };
 
@@ -65,11 +116,32 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
     return () => {
       console.log('LiveChatRenderer: Cleaning up');
       mounted.current = false;
+      clearInterval(inactivityTimer);
       reader.cancel().catch(err => {
         console.error('LiveChatRenderer: Error cancelling reader', err);
       });
+      // Always finalize on unmount to ensure any remaining content is processed
+      if (!processingComplete.current) {
+        finalize();
+        processingComplete.current = true;
+      }
     };
-  }, [stream, processToken, finalize]);
+  }, [stream, processToken, finalize, reset]);
+
+  // Force finalize after a reasonable timeout if no chunks have been created
+  useEffect(() => {
+    if (isLoading && !streamComplete) {
+      const timeout = setTimeout(() => {
+        if (!streamComplete && chunks.length === 0) {
+          console.log('LiveChatRenderer: Auto-finalizing after timeout');
+          finalize();
+          setIsLoading(false);
+        }
+      }, 5000); // 5 second safety timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [chunks.length, streamComplete, finalize, isLoading]);
 
   return (
     <div className="space-y-6 p-4">
@@ -80,10 +152,18 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
         </div>
       )}
 
-      {chunks.length === 0 && !isError && !streamComplete && (
+      {chunks.length === 0 && !isError && (
         <div className="flex items-center space-x-2 py-4">
-          <span className="loading loading-dots"></span>
-          <span>Waiting for response...</span>
+          <span
+            className={`loading loading-dots ${!isLoading && streamComplete ? 'hidden' : ''}`}
+          ></span>
+          <span>
+            {isLoading
+              ? 'Waiting for response...'
+              : streamComplete
+              ? 'Processing...'
+              : 'Generating response...'}
+          </span>
         </div>
       )}
 
@@ -135,10 +215,16 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
         })}
       </AnimatePresence>
 
-      {streamComplete && chunks.length === 0 && (
+      {streamComplete && chunks.length === 0 && streamedText && (
         <div className="alert alert-warning">
           <Icon icon="carbon:information" className="w-6 h-6" />
-          <p>No content was received from the stream.</p>
+          <div className="flex flex-col">
+            <p>Content received but rendered as plain text.</p>
+            <details className="text-xs mt-2">
+              <summary>View raw content</summary>
+              <p className="mt-1 max-h-20 overflow-y-auto">{streamedText}</p>
+            </details>
+          </div>
         </div>
       )}
     </div>

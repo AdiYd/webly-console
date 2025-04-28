@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import parse, { domToReact } from 'html-react-parser';
 import { motion } from 'framer-motion';
 import { Icon } from '@iconify/react';
+import { clientLogger } from '@/utils/logger';
 
 // Types
 interface ComponentRendererProps {
@@ -44,10 +45,33 @@ export function ComponentRenderer({ jsxString, logic, onSubmit }: ComponentRende
   const initialStates = logic?.states || {};
   const [formState, setFormState] = useState<Record<string, any>>(initialStates);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  // Prepare component when jsxString is ready
+  useEffect(() => {
+    if (jsxString) {
+      try {
+        // Clean JSX string if needed
+        let cleanedJsx = jsxString;
+        if (jsxString.includes('\\n') || jsxString.includes('\\t') || jsxString.includes('\\r')) {
+          clientLogger.debug('ComponentRenderer: Cleaning JSX string', 'jsxString', jsxString);
+          cleanedJsx = jsxString.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '');
+        }
+
+        // Mark component as ready for rendering
+        setIsReady(true);
+      } catch (error) {
+        clientLogger.error('ComponentRenderer: Error preparing JSX', 'data:', error);
+        setParseError(
+          `Error preparing component: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+  }, [jsxString]);
 
   // Debug log for initial state
   useEffect(() => {
-    console.log('ComponentRenderer: Form states initialized', initialStates);
+    clientLogger.debug('ComponentRenderer: Form states initialized', 'initialState', initialStates);
   }, [initialStates]);
 
   // Helpers
@@ -112,97 +136,108 @@ export function ComponentRenderer({ jsxString, logic, onSubmit }: ComponentRende
     }
   }, [jsxString]);
 
-  // Parser
+  // Parser with optimized rendering
   let parsedContent;
   try {
-    parsedContent = parse(jsxString, {
-      replace: (domNode: any) => {
-        if (!domNode.attribs) return;
+    if (!isReady) {
+      parsedContent = (
+        <div className="p-2 border border-base-300 rounded-lg animate-pulse">
+          <div className="flex items-center">
+            <Icon icon="carbon:code" className="mr-2 text-base-content/50" />
+            <span className="text-base-content/70">Preparing component...</span>
+          </div>
+        </div>
+      );
+    } else {
+      parsedContent = parse(jsxString, {
+        replace: (domNode: any) => {
+          if (!domNode.attribs) return;
 
-        const { id, class: htmlClass, className, onclick, onClick } = domNode.attribs || {};
-        // Handle both class and className
-        const finalClassName = className || htmlClass;
+          const { id, class: htmlClass, className, onclick, onClick } = domNode.attribs || {};
+          // Handle both class and className
+          const finalClassName = className || htmlClass;
 
-        // Handle both onclick and onClick
-        const hasClickHandler = onclick || onClick;
+          // Handle both onclick and onClick
+          const hasClickHandler = onclick || onClick;
 
-        if (id) {
-          // Log when we find an element with an ID for debugging
-          if (Math.random() < 0.1) {
-            // Only log some to reduce spam
-            console.log('ComponentRenderer: Found element with ID', {
-              id,
-              type: domNode.name,
-              hasClass: !!finalClassName,
-              hasClickHandler,
-            });
-          }
+          if (id) {
+            // Log when we find an element with an ID for debugging
+            if (Math.random() < 0.1) {
+              // Only log some to reduce spam
+              console.log('ComponentRenderer: Found element with ID', {
+                id,
+                type: domNode.name,
+                hasClass: !!finalClassName,
+                hasClickHandler,
+              });
+            }
 
-          // Buttons with actions
-          const actionEntry = Object.entries(logic?.actions || {}).find(
-            ([_, a]) => a.targetId === id
-          );
+            // Buttons with actions
+            const actionEntry = Object.entries(logic?.actions || {}).find(
+              ([_, a]) => a.targetId === id
+            );
 
-          if (actionEntry) {
-            const [actionName] = actionEntry;
-            if (domNode.name === 'button') {
+            if (actionEntry) {
+              const [actionName] = actionEntry;
+              if (domNode.name === 'button') {
+                return (
+                  <button
+                    key={id}
+                    id={id}
+                    className={finalClassName || 'btn'}
+                    onClick={() => handleAction(actionName)}
+                  >
+                    {domToReact(domNode.children)}
+                  </button>
+                );
+              }
+            }
+
+            // Inputs
+            if (domNode.name === 'input') {
               return (
-                <button
+                <input
                   key={id}
-                  id={id}
-                  className={finalClassName || 'btn'}
-                  onClick={() => handleAction(actionName)}
+                  {...domNode.attribs}
+                  className={finalClassName || 'input input-bordered'}
+                  value={formState[id] || ''}
+                  onChange={e => handleInputChange(id, e.target.value)}
+                />
+              );
+            }
+
+            // Handle more input types
+            if (domNode.name === 'textarea') {
+              return (
+                <textarea
+                  key={id}
+                  {...domNode.attribs}
+                  className={finalClassName || 'textarea textarea-bordered'}
+                  value={formState[id] || ''}
+                  onChange={e => handleInputChange(id, e.target.value)}
                 >
                   {domToReact(domNode.children)}
-                </button>
+                </textarea>
+              );
+            }
+
+            if (domNode.name === 'select') {
+              return (
+                <select
+                  key={id}
+                  {...domNode.attribs}
+                  className={finalClassName || 'select select-bordered'}
+                  value={formState[id] || ''}
+                  onChange={e => handleInputChange(id, e.target.value)}
+                >
+                  {domToReact(domNode.children)}
+                </select>
               );
             }
           }
-
-          // Inputs
-          if (domNode.name === 'input') {
-            return (
-              <input
-                key={id}
-                {...domNode.attribs}
-                className={finalClassName || 'input input-bordered'}
-                value={formState[id] || ''}
-                onChange={e => handleInputChange(id, e.target.value)}
-              />
-            );
-          }
-
-          // Handle more input types
-          if (domNode.name === 'textarea') {
-            return (
-              <textarea
-                key={id}
-                {...domNode.attribs}
-                className={finalClassName || 'textarea textarea-bordered'}
-                value={formState[id] || ''}
-                onChange={e => handleInputChange(id, e.target.value)}
-              >
-                {domToReact(domNode.children)}
-              </textarea>
-            );
-          }
-
-          if (domNode.name === 'select') {
-            return (
-              <select
-                key={id}
-                {...domNode.attribs}
-                className={finalClassName || 'select select-bordered'}
-                value={formState[id] || ''}
-                onChange={e => handleInputChange(id, e.target.value)}
-              >
-                {domToReact(domNode.children)}
-              </select>
-            );
-          }
-        }
-      },
-    });
+        },
+      });
+    }
   } catch (error: any) {
     console.error('ComponentRenderer: Error parsing JSX', error);
     setParseError(`Error parsing component: ${error?.message}`);
