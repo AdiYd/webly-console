@@ -210,9 +210,9 @@ export async function POST(req: NextRequest) {
     const interactiveUIPattern = `
         🎨 Dynamic UI Injection for Live Streaming
 
-        You can create dynamic, interactive UI components inside the conversation by using this format:
+        You can create dynamic, interactive UI components inside the conversation and engage with the client in a visual way by using this format:
 
-        1. Whenever you want to inject a UI component (such as a form, card, options, etc.), wrap a JSON object inside triple brackets: [[[ ... ]]].
+        1. You can print an UI component (such as a form, card, options, etc.), wrap a JSON object inside triple brackets: [[[ ... ]]].
         2. The JSON object must contain:
           - "jsxString": A string of JSX-like HTML that defines the visual structure using TailwindCSS and DaisyUI classes.
           - "logic": A JSON object defining states and actions (e.g., button clicks, form submissions).
@@ -272,6 +272,7 @@ export async function POST(req: NextRequest) {
         ✅ Summary:
 
         Use this format to dynamically create smooth, beautiful, live interactive UI inside the chat — enriching the conversation and making it engaging for the client.
+        Use it wisely and creatively, every time the client asking to see or show data or requested to chose, input or select data!
         `;
 
     const finalPrompt = `

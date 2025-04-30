@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useLiveStreamParser } from '@/hooks/use-Parser';
+import { useLiveStreamParser } from '@/hooks/use-parser';
 import { ComponentRenderer } from './componentRenderer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '@iconify/react';
