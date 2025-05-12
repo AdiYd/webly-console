@@ -3,20 +3,31 @@
 import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/ui/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useOrganization } from '@/context/OrganizationContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { clientLogger } from '@/utils/logger';
 
 const Header = () => {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState<Boolean>(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const headerScrollThreshold = 500; // px
-  const { currentOrganization, organizations, switchOrganization } = useOrganization();
   const router = useRouter();
   const pathName = usePathname();
   useEffect((): any => {
-    if (pathName.includes('chat') || ['/test'].includes(pathName)) {
+    if (pathName.includes('chat')) {
       setIsVisible(false);
+
+      const handleMouseOver = (e: MouseEvent) => {
+        // console.log('Mouse moved', e.clientY, isNavOpen);
+        if (e.clientY <= 15) {
+          setIsVisible(true);
+        } else if ((e.clientY > 250 && isVisible) || (e.clientY > 15 && !isVisible)) {
+          setIsVisible(false);
+        }
+      };
+      window.addEventListener('mousemove', handleMouseOver);
+
+      return () => {
+        window.removeEventListener('mousemove', handleMouseOver);
+      };
     }
   }, [pathName]);
 
@@ -55,6 +66,7 @@ const Header = () => {
     <AnimatePresence>
       {isVisible && (
         <motion.header
+          id="header"
           className="fixed top-0 left-0 right-0 z-30 w-full"
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}

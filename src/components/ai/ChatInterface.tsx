@@ -344,7 +344,6 @@ export default function ChatInterface({
       <div class="toast toast-top toast-end z-50">
         <div class="alert alert-info">
           <Icon icon="carbon:cloud-upload" class="w-5 h-5" />
-          <span>Processing ${count} file(s)...</span>
         </div>
       </div>
     `;
@@ -507,7 +506,7 @@ export default function ChatInterface({
   );
 
   return (
-    <div className="flex flex-col justify-between h-full w-full">
+    <div className="flex flex-col bg-base-100 justify-between h-full w-full">
       {/* Messages area */}
       <div
         className={`flex-1 mt-0 overflow-y-auto max-h-[fill-available] p-4 md:px-6 ${
@@ -534,17 +533,6 @@ export default function ChatInterface({
               }
               // --- END MODIFIED CONTENT EXTRACTION ---
 
-              // --- DEBUG LOGGING ---
-              clientLogger.debug('ChatInterface: Preparing to render StreamedMessage', 'data', {
-                messageId: message.id || `msg-${index}`,
-                role: message.role,
-                contentLength: messageContent?.length || 0,
-                isStreaming: status === 'streaming',
-                messageIndex: index,
-                isLastMessage: index === messages.length - 1,
-              });
-              // --- END DEBUG LOGGING ---
-
               // Ensure role is valid before passing
               const validRole =
                 message.role === 'user' || message.role === 'assistant'
@@ -568,7 +556,7 @@ export default function ChatInterface({
             })}
 
         {error && !isLoading && (
-          <div className="alert alert-error shadow-lg mt-2">
+          <div className="alert alert-error w-fit ml-12 shadow-lg mt-2">
             <Icon icon="carbon:warning" className="w-6 h-6" />
             <span>Error: {error}</span>
             <button className="btn btn-sm btn-ghost" onClick={() => setError(null)}>
@@ -634,7 +622,7 @@ export default function ChatInterface({
         className={`${isMinimized ? 'p-2' : 'p-4'} max-sm:p-2 pt-0 max-w-[1200px] w-full mx-auto `}
       >
         <div
-          className={`card hover:!border-base-content/50 border-[0.9px] !bg-base-300 flex flex-col my-4 mx-2 max-sm:m-0 rounded-xl ${
+          className={`card hover:!border-base-content/50 border-[0.9px] border-base-content/30 !bg-base-300 flex flex-col my-4 mx-2 max-sm:m-0 rounded-xl ${
             isDragging ? 'border-primary border-dashed' : 'border-base-300'
           }`}
           onDragEnter={handleDragEnter}

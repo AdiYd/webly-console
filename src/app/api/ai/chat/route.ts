@@ -114,10 +114,16 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) {
     serverLogger.error('ChatAPI', 'Unauthorized request attempt');
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        error:
+          'Unauthorized user, please <a href="/login">log in</a> or <a href="/signup">sign up</a>',
+      }),
+      {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 
   try {
@@ -210,9 +216,9 @@ export async function POST(req: NextRequest) {
     const interactiveUIPattern = `
         🎨 Dynamic UI Injection for Live Streaming
 
-        You can create dynamic, interactive UI components inside the conversation and engage with the client in a visual way by using this format:
+        If there are more information to gather from the client or to show the client, always create dynamic, interactive UI components inside the conversation and engage with the client in a visual way by using this format:
 
-        1. You can print an UI component (such as a form, card, options, etc.), wrap a JSON object inside triple brackets: [[[ ... ]]].
+        1. You can provide an UI component (such as a form, card, options, etc.), wrap a JSON object inside triple brackets: [[[ ... ]]].
         2. The JSON object must contain:
           - "jsxString": A string of JSX-like HTML that defines the visual structure using TailwindCSS and DaisyUI classes.
           - "logic": A JSON object defining states and actions (e.g., button clicks, form submissions).

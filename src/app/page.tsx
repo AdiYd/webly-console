@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { Icon } from '@/components/ui/icon';
-import { useAI } from '@/context/AIContext';
 import FireDots from '@/components/ui/fireFlies/firedots';
 import { useTheme } from '@/components/ui/theme-provider';
 import { useEffect, useState } from 'react';
@@ -48,9 +47,6 @@ export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
   const { provider, model, agents, currentOrganization } = useOrganization();
   const { theme, isDarkTheme, isLoading } = useTheme();
-  const session = useSession();
-  console.log('Organization:', { provider, model, agents, name: currentOrganization.name });
-  console.log('Session:', session);
   useEffect(() => {
     // Set mounted to true after the component has mounted
     setIsMounted(true);
@@ -62,7 +58,7 @@ export default function Home() {
   }
 
   return (
-    <div className="mt-12 mb-18">
+    <div className="">
       {(isDarkTheme || theme === 'aqua') && <FireDots particleNum={30} particleBaseSize={17} />}
       {/* Hero Section */}
       <section className="hero py-20 ">
@@ -107,13 +103,6 @@ export default function Home() {
               icon="proicons:chat"
               btnColor="btn-primary"
               href="/chat"
-            />
-            <FeatureCard
-              title="Math Exercise Generator"
-              description="Create customized math problems with varying difficulty levels tailored to your learning needs."
-              icon="md:file-tray-stacked"
-              btnColor="btn-secondary"
-              href="/exercises"
             />
             <FeatureCard
               title="Coming Soon: Writing Assistant"

@@ -480,7 +480,11 @@ export default function ChatPage() {
       style={{ height: isMobile ? '90vh' : '' }}
       className="flex py-1 w-full h-screen h-[calc(100vh-3rem)]* overflow-hidden transition-[width] relative"
     >
-      {!isMobile ? (
+      {isMobile ? (
+        <div className="flex-1 h-full overflow-auto py-1 backdrop-blur-sm">
+          <ChatInterface isMinimized={true} />
+        </div>
+      ) : (
         <>
           <div
             id="chat-container"
@@ -591,10 +595,6 @@ export default function ChatPage() {
             </div>
           </div>
         </>
-      ) : (
-        <div className="flex-1 h-full overflow-auto py-1 backdrop-blur-sm">
-          <ChatInterface isMinimized={true} />
-        </div>
       )}
     </div>
   );

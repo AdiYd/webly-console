@@ -64,9 +64,9 @@ function NavLink({ href, children, className }: NavLinkProps) {
 }
 
 export function Navigation() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isClientReady, setIsClientReady] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState<Boolean>(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState<Boolean>(false);
+  const [isClientReady, setIsClientReady] = useState<Boolean>(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const session = useSession();
   const { isDesktop } = useBreakpoint();
@@ -231,7 +231,7 @@ export function Navigation() {
           <div className="flex items-center gap-6">
             <div className="avatar">
               <div className="w-12 mask mask-squircle">
-                <img src={userData.image} alt={userData.name} />
+                <img loading="eager" src={userData.image} alt={userData.name} />
               </div>
             </div>
             <div>
@@ -410,9 +410,9 @@ export function Navigation() {
             </ul>
           )}
         </div>
-        <Link href="/" className="text-lg px-2">
+        {/* <Link href="/" className="text-lg px-2">
           Webly AI
-        </Link>
+        </Link> */}
         {/* Organization Switcher (Desktop Only) - Only rendered client-side */}
         <div className="hidden lg:flex items-center">
           {isClientReady && session.status === 'authenticated' && organizationSwitcher}

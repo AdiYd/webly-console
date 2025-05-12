@@ -158,11 +158,7 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
             className={`loading loading-dots ${!isLoading && streamComplete ? 'hidden' : ''}`}
           ></span>
           <span>
-            {isLoading
-              ? 'Waiting for response...'
-              : streamComplete
-              ? 'Processing...'
-              : 'Generating response...'}
+            {isLoading ? 'Waiting for response...' : streamComplete ? '' : 'Generating response...'}
           </span>
         </div>
       )}

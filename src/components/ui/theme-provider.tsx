@@ -1,9 +1,10 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { clientLogger } from '@/utils/logger';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 // Extended list of supported themes
-export type Theme = 
+export type Theme =
   | 'light'
   | 'dark'
   | 'cupcake'
@@ -74,7 +75,7 @@ export const darkThemes = [
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
-  storageKey = 'webly-theme',
+  storageKey = 'theme',
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(defaultTheme);
@@ -83,6 +84,7 @@ export function ThemeProvider({
 
   useEffect(() => {
     const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+    clientLogger.debug('Theme', 'Saved theme from localStorage:', savedTheme);
     if (savedTheme) {
       setTheme(savedTheme);
     }
@@ -94,11 +96,11 @@ export function ThemeProvider({
 
     if (theme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
+        ? 'forest'
+        : 'autumn';
 
       root.setAttribute('data-theme', systemTheme);
-      setIsDarkTheme(systemTheme === 'dark');
+      setIsDarkTheme(systemTheme === 'forest');
       return;
     }
 
@@ -106,15 +108,18 @@ export function ThemeProvider({
     setIsDarkTheme(darkThemes.includes(theme));
   }, [theme]);
 
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
-    isLoading,
-    isDarkTheme,
-  };
+  const value = useMemo(
+    () => ({
+      theme,
+      setTheme: (theme: Theme) => {
+        localStorage.setItem(storageKey, theme);
+        setTheme(theme);
+      },
+      isLoading,
+      isDarkTheme,
+    }),
+    [theme, isLoading, storageKey]
+  );
 
   return (
     <ThemeContext.Provider {...props} value={value}>

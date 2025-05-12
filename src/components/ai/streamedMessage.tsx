@@ -164,7 +164,7 @@ export function StreamedMessage({ content, role }: StreamedMessageProps) {
         {isLoadingInitial && (
           <div className="flex items-center space-x-2 py-2">
             <span className="loading loading-dots loading-sm"></span>
-            <span className="text-sm opacity-70">Processing...</span>
+            {/* <span className="text-sm opacity-70">Processing...</span> */}
           </div>
         )}
 

@@ -17,12 +17,13 @@ import {
 } from 'firebase/firestore';
 
 export type AIProvider = 'openai' | 'anthropic' | 'gemini' | 'grok';
+export type Capabilitys = 'chat' | 'vision' | 'code' | 'text-to-image' | 'audio-to-text';
 
 export interface AIModel {
   id: string;
   name: string;
   provider: AIProvider;
-  capabilities: string[];
+  capabilities: Capabilitys[];
   maxTokens: number;
 }
 
@@ -63,7 +64,7 @@ export interface Project {
 export interface Organization {
   id: string;
   name: string;
-  agents: string[]; // list of global agent IDs assigned to this organization
+  agents: Agent[]; // list of global agent IDs assigned to this organization
   ai_params: AIParams;
   settings: OrganizationSettings;
   projects: Project[];
@@ -360,7 +361,7 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
 
   // Derive assigned agents based on currentOrganization.agent
   const assignedAgents = useMemo(
-    () => globalAgents.filter(agent => currentOrganization.agents.includes(agent.id)),
+    () => globalAgents.filter(agent => currentOrganization.agents.some(a => a.id === agent.id)),
     [globalAgents, currentOrganization.agents]
   );
 
@@ -576,7 +577,9 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
     await updateDoc(orgRef, { agent: arrayRemove(agentId) });
     setOrganizations(orgs =>
       orgs.map(o =>
-        o.id === currentOrganization.id ? { ...o, agent: o.agents.filter(id => id !== agentId) } : o
+        o.id === currentOrganization.id
+          ? { ...o, agent: o.agents.filter(agent => agent.id !== agentId) }
+          : o
       )
     );
   };
@@ -663,7 +666,6 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
 
       // Agent management
       globalAgents,
-      // agent: assignedAgents.map(agent => agent.id),
       addAgent,
       updateAgent,
       removeAgent,

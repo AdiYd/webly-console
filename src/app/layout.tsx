@@ -9,6 +9,8 @@ import Footer from '@/components/layout/footer';
 import Header from '@/components/layout/header';
 import BlurDecoratives from '@/components/layout/blurDecoratives';
 import { SessionProvider } from 'next-auth/react';
+import { clientLogger } from '@/utils/logger';
+import { doc } from 'firebase/firestore';
 
 const robotoSans = Roboto({
   subsets: ['latin'],
@@ -29,19 +31,19 @@ export default async function RootLayout({
 }>) {
   // Get the session server-side
   const session = await auth();
-  // console.log('Session:', session);
+  clientLogger.info('Session:', 'This is session:', session);
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${robotoSans.className} ${inter.className} font-sans relative max-w-full overflow-x-hidden min-h-screen flex flex-col`}
+        className={`${robotoSans.className} ${inter.className} font-sans relative max-w-full overflow-x-hidden min-h-screen max-h-screen flex flex-col`}
       >
         <SessionProvider refetchInterval={0} refetchOnWindowFocus={false} session={session}>
           <ThemeProvider defaultTheme="system" storageKey="theme">
             <OrganizationContextProvider>
               <BlurDecoratives />
               <Header />
-              <main className="flex-1 z-10 h-full min-h-screen flex flex-col">{children}</main>
+              <main className="flex-1 z-10  max-h-full flex flex-col">{children}</main>
               <Footer />
             </OrganizationContextProvider>
           </ThemeProvider>
