@@ -70,9 +70,12 @@ export function Navigation() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const session = useSession();
   const { isDesktop } = useBreakpoint();
-  // Use placeholder hook for now, replace with actual useOrganization() when context is ready
-  const { currentOrganization, organizations, switchOrganization } = useOrganization();
-  // const { currentOrganization, organizations, switchOrganization } = useOrganization();
+  const {
+    currentOrganization,
+    organizations,
+    switchOrganization,
+    agents: assignedAgents,
+  } = useOrganization();
 
   // Prevent hydration mismatch by deferring client-side rendering
   useEffect(() => {
@@ -191,13 +194,32 @@ export function Navigation() {
     // Use sessionExample data for demonstration
     const userData = session.data.user;
 
+    // Agents carousel
+    const agentsCarousel = isDesktop && assignedAgents && assignedAgents.length > 0 && (
+      <div className="flex space-x-2 overflow-x-auto ml-4 items-center">
+        {assignedAgents.map(agent => (
+          <Link key={agent.id} href={`/agents/${agent.id}`} className="avatar online">
+            <div className="mask mask-circle w-8 h-8 ring ring-offset-2 ring-primary">
+              <img src={agent.avatar} alt={agent.name} title={agent.name} />
+            </div>
+          </Link>
+        ))}
+        <Link
+          href="/account"
+          className="avatar placeholder w-8 h-8 flex items-center justify-center bg-base-200"
+        >
+          <span className="text-base-content">+</span>
+        </Link>
+      </div>
+    );
+
     avatar = (
       <div
         className="avatar online cursor-pointer"
         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
       >
         <div className="mask mask-circle w-8 ring ring-offset-2 ring-primary ring-offset-base-100 hover:opacity-85">
-          <img src={userData.image} alt={userData.name || 'User profile'} />
+          <img loading="eager" src={userData.image} alt={userData.name || 'User profile'} />
         </div>
       </div>
     );
@@ -319,6 +341,16 @@ export function Navigation() {
         </AnimatePresence>
       </div>
     );
+
+    // Render agents carousel
+    if (agentsCarousel) {
+      authElement = (
+        <>
+          {agentsCarousel}
+          {authElement}
+        </>
+      );
+    }
   } else if (session.status === 'loading') {
     authElement = (
       <div className="navbar-end">

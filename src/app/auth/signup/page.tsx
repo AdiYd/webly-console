@@ -129,14 +129,14 @@ export default function SignUp() {
 
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-
       const user = result.user;
       console.log('Google client: ', user);
       // Check if the user already exists in Firestore
       const userDocRef = doc(db, 'users', user.email || user.uid);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate a delay
+      // await new Promise(resolve => setTimeout(resolve, 800)); // Simulate a delay
       const userDoc = await getDoc(userDocRef);
       if (!userDoc.exists()) {
+        console.log('Creating new user document in Firestore', user);
         await setDoc(doc(db, 'users', user.email || user.uid), {
           name: user.displayName,
           email: user.email,

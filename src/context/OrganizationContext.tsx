@@ -4,6 +4,17 @@ import { useSession } from 'next-auth/react';
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Theme, useTheme } from '@/components/ui/theme-provider';
+import { db } from '@/lib/firebase/firebase-client';
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  arrayUnion,
+  arrayRemove,
+  doc,
+} from 'firebase/firestore';
 
 export type AIProvider = 'openai' | 'anthropic' | 'gemini' | 'grok';
 
@@ -52,7 +63,7 @@ export interface Project {
 export interface Organization {
   id: string;
   name: string;
-  agents: Agent[];
+  agents: string[]; // list of global agent IDs assigned to this organization
   ai_params: AIParams;
   settings: OrganizationSettings;
   projects: Project[];
@@ -90,9 +101,10 @@ interface OrganizationContextType {
   updateSettings: (settings: Partial<OrganizationSettings>) => void;
 
   // Agent management
-  addAgent: (agentData: Omit<Agent, 'id'>) => void;
-  updateAgent: (agentId: string, agentData: Omit<Agent, 'id'>) => void;
-  removeAgent: (agentId: string) => void;
+  globalAgents: Agent[]; // all available global agents
+  addAgent: (agentData: Omit<Agent, 'id'>) => Promise<void>; // create and assign agent
+  updateAgent: (agentId: string, agentData: Partial<Omit<Agent, 'id'>>) => Promise<void>; // update global agent
+  removeAgent: (agentId: string) => Promise<void>; // unassign from org
 
   // Project management
   addProject: (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -261,8 +273,9 @@ const defaultOrganization = createDefaultOrganization();
 const defaultValues: OrganizationContextType = {
   organizations: [defaultOrganization],
   currentOrganization: defaultOrganization,
+  name: defaultOrganization.name,
 
-  // Organization management functions
+  // Organization management
   switchOrganization: () => {},
   addOrganization: () => {},
   updateOrganization: () => {},
@@ -274,9 +287,11 @@ const defaultValues: OrganizationContextType = {
   updateSettings: () => {},
 
   // Agent management
-  addAgent: () => {},
-  updateAgent: () => {},
-  removeAgent: () => {},
+  globalAgents: [],
+  agents: [],
+  addAgent: async () => {},
+  updateAgent: async () => {},
+  removeAgent: async () => {},
 
   // Project management
   addProject: () => {},
@@ -288,10 +303,8 @@ const defaultValues: OrganizationContextType = {
   model: defaultOrganization.ai_params.model,
   temperature: defaultOrganization.ai_params.temperature,
   organizationPrompt: defaultOrganization.ai_params.organizationPrompt,
-  agents: defaultOrganization.agents,
   icon: availableProvidersData[defaultOrganization.ai_params.provider].icon || '',
   preferences: defaultOrganization.settings,
-  name: defaultOrganization.name,
 
   // Direct setters for backward compatibility
   setProvider: () => {},
@@ -319,18 +332,24 @@ export const useOrganization = () => useContext(OrganizationContext);
 export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const { data: session, status } = useSession();
+  const isAuth = status === 'authenticated';
+
   // State for organizations and current organization
   const [organizations, setOrganizations] = useState<Organization[]>([defaultOrganization]);
   const [currentOrganizationId, setCurrentOrganizationId] = useState<string>(
     defaultOrganization.id
   );
 
+  // Global agents state
+  const [globalAgents, setGlobalAgents] = useState<Agent[]>([]);
+
   // Derived state for current organization
   const currentOrganization = useMemo(() => {
     return organizations.find(org => org.id === currentOrganizationId) || organizations[0];
   }, [organizations, currentOrganizationId]);
 
-  console.log('Current Organization:', currentOrganization);
+  // console.log('Current Organization:', currentOrganization);
 
   // Status state - initialize icon with a safe default first
   const [icon, setIcon] = useState<string>('');
@@ -339,8 +358,11 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
   const [saveError, setSaveError] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
 
-  const { status } = useSession();
-  const isAuth = status === 'authenticated';
+  // Derive assigned agents based on currentOrganization.agent
+  const assignedAgents = useMemo(
+    () => globalAgents.filter(agent => currentOrganization.agents.includes(agent.id)),
+    [globalAgents, currentOrganization.agents]
+  );
 
   // Update icon whenever currentOrganization changes
   useEffect(() => {
@@ -387,6 +409,20 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       setSaveError('Failed to load your organizations. Using default settings.');
     }
   }, [status]); // Run only when auth status changes
+
+  // Load global agents on auth
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    (async () => {
+      try {
+        const snap = await getDocs(collection(db, 'agents'));
+        const agents = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Agent, 'id'>) }));
+        setGlobalAgents(agents);
+      } catch (error) {
+        console.error('Error loading agents:', error);
+      }
+    })();
+  }, [status]);
 
   // Update icon when provider changes
   useEffect(() => {
@@ -514,27 +550,35 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
     );
   };
 
-  // Agent management functions
-  const addAgent = (agentData: Omit<Agent, 'id'>) => {
-    const newAgent: Agent = {
-      ...agentData,
-      id: uuidv4(),
-    };
-
-    updateOrganizationProperty('agents', [...currentOrganization.agents, newAgent]);
-  };
-
-  const updateAgent = (agentId: string, agentData: Omit<Agent, 'id'>) => {
-    const updatedAgents = currentOrganization.agents.map(agent =>
-      agent.id === agentId ? { ...agentData, id: agentId } : agent
+  // Functions to manage agents
+  const addAgent = async (agentData: Omit<Agent, 'id'>) => {
+    if (!isAuth || !session?.user?.id) return;
+    const ref = await addDoc(collection(db, 'agents'), agentData);
+    setGlobalAgents(prev => [...prev, { ...agentData, id: ref.id }]);
+    const orgRef = doc(db, `users/${session.user.id}/organizations/${currentOrganization.id}`);
+    await updateDoc(orgRef, { agent: arrayUnion(ref.id) });
+    setOrganizations(orgs =>
+      orgs.map(o => (o.id === currentOrganization.id ? { ...o, agent: [...o.agents, ref.id] } : o))
     );
-
-    updateOrganizationProperty('agents', updatedAgents);
   };
 
-  const removeAgent = (agentId: string) => {
-    const filteredAgents = currentOrganization.agents.filter(agent => agent.id !== agentId);
-    updateOrganizationProperty('agents', filteredAgents);
+  const updateAgent = async (agentId: string, data: Partial<Omit<Agent, 'id'>>) => {
+    if (!isAuth) return;
+    const agentRef = doc(db, 'agents', agentId);
+    await updateDoc(agentRef, data);
+    setGlobalAgents(prev => prev.map(a => (a.id === agentId ? { ...a, ...data } : a)));
+  };
+
+  const removeAgent = async (agentId: string) => {
+    if (!isAuth) return;
+    // unassign from org
+    const orgRef = doc(db, `users/${session?.user?.id}/organizations/${currentOrganization.id}`);
+    await updateDoc(orgRef, { agent: arrayRemove(agentId) });
+    setOrganizations(orgs =>
+      orgs.map(o =>
+        o.id === currentOrganization.id ? { ...o, agent: o.agents.filter(id => id !== agentId) } : o
+      )
+    );
   };
 
   // Project management functions
@@ -618,6 +662,8 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       updateSettings,
 
       // Agent management
+      globalAgents,
+      // agent: assignedAgents.map(agent => agent.id),
       addAgent,
       updateAgent,
       removeAgent,

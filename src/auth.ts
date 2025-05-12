@@ -5,20 +5,6 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 // Updated imports to use the new file structure
 import { auth as clientAuth, db as clientDb } from '@/lib/firebase/firebase-client';
-
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id: string;
-      role: string;
-      name: string;
-      email: string;
-      image: string;
-    };
-    maxAge: number;
-  }
-}
-
 interface User {
   name: string;
   email: string;
@@ -27,12 +13,20 @@ interface User {
   role?: string;
   id?: string;
 }
+  declare module 'next-auth' {
+    interface Session {
+      user: User;
+      maxAge: number;
+    }
+  }
+
 
 const demoUser: User = {
+  id: 'demoUser',
   name: 'John Doe',
   email: 'demo@example.com',
   image: 'https://i.pravatar.cc/150?img=3',
-  rememberMe: 'false',
+  rememberMe: false, // Changed from 'false' (string) to false (boolean)
   role: 'Trial',
 };
 

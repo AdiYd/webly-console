@@ -763,7 +763,7 @@ export default function ProfilePage() {
                     <Icon icon="mdi:account-group" className="w-5 h-5 text-primary" />
                     <span>Expert Agents</span>
                     <span className="badge badge-sm badge-primary">
-                      {agents.length}/{maxAgents}
+                      {agents?.length}/{maxAgents}
                     </span>
                   </h3>
                   <button
