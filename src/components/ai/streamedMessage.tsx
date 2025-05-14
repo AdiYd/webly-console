@@ -146,8 +146,8 @@ export function StreamedMessage({ content, role }: StreamedMessageProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="bg-accent flex items-center justify-center h-full">
-              <Icon icon="carbon:bot" className="w-6 h-6 text-accent-content" />
+            <div className="bg-primary flex items-center justify-center h-full">
+              <div className="circle-bg" />
             </div>
           )}
         </div>

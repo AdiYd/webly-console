@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Theme, useTheme } from '@/components/ui/theme-provider';
 import { db } from '@/lib/firebase/firebase-client';
@@ -15,6 +15,7 @@ import {
   arrayRemove,
   doc,
 } from 'firebase/firestore';
+import { clientLogger } from '@/utils/logger';
 
 export type AIProvider = 'openai' | 'anthropic' | 'gemini' | 'grok';
 export type Capabilitys = 'chat' | 'vision' | 'code' | 'text-to-image' | 'audio-to-text';
@@ -35,6 +36,7 @@ export interface Agent {
   role: string;
   description: string;
   prompt: string;
+  isPrivate?: boolean; // Add this to indicate if agent is private to an organization
 }
 
 // Define the AI parameters interface
@@ -64,7 +66,8 @@ export interface Project {
 export interface Organization {
   id: string;
   name: string;
-  agents: Agent[]; // list of global agent IDs assigned to this organization
+  agents: string[]; // Array of agent IDs (references to global agents)
+  privateAgents: Agent[]; // Array of organization-specific agents (full objects)
   ai_params: AIParams;
   settings: OrganizationSettings;
   projects: Project[];
@@ -103,9 +106,11 @@ interface OrganizationContextType {
 
   // Agent management
   globalAgents: Agent[]; // all available global agents
-  addAgent: (agentData: Omit<Agent, 'id'>) => Promise<void>; // create and assign agent
-  updateAgent: (agentId: string, agentData: Partial<Omit<Agent, 'id'>>) => Promise<void>; // update global agent
-  removeAgent: (agentId: string) => Promise<void>; // unassign from org
+  addAgent: (agentData: Omit<Agent, 'id'>, isPrivate?: boolean) => Promise<void>; // create agent
+  updateAgent: (agentId: string, agentData: Partial<Omit<Agent, 'id'>>) => Promise<void>; // update agent
+  removeAgent: (agentId: string) => Promise<void>; // remove agent from org
+  importAgent: (agentId: string) => Promise<void>; // import global agent to org
+  getAgentById: (agentId: string) => Agent | undefined; // get agent by ID (whether global or private)
 
   // Project management
   addProject: (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -252,7 +257,8 @@ export const availableProvidersData: Record<
 const createDefaultOrganization = (name: string = 'My Organization'): Organization => ({
   id: uuidv4(),
   name,
-  agents: [],
+  agents: [], // Reference IDs to global agents
+  privateAgents: [], // Full objects of private agents
   ai_params: {
     provider: 'openai',
     model: 'gpt-4o',
@@ -263,7 +269,15 @@ const createDefaultOrganization = (name: string = 'My Organization'): Organizati
     theme: 'system',
     saveHistory: true,
   },
-  projects: [],
+  projects: [
+    {
+      id: uuidv4(),
+      name: 'Default Project',
+      description: 'My first project to get started',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
@@ -293,6 +307,8 @@ const defaultValues: OrganizationContextType = {
   addAgent: async () => {},
   updateAgent: async () => {},
   removeAgent: async () => {},
+  importAgent: async () => {},
+  getAgentById: () => undefined,
 
   // Project management
   addProject: () => {},
@@ -342,8 +358,31 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
     defaultOrganization.id
   );
 
-  // Global agents state
-  const [globalAgents, setGlobalAgents] = useState<Agent[]>([]);
+  // Global agents state with example data
+  const [globalAgents, setGlobalAgents] = useState<Agent[]>([
+    {
+      id: 'sample-marketing-agent',
+      avatar: 'mdi:account-tie',
+      name: 'Marketing Expert',
+      role: 'Marketing Strategy Specialist',
+      description:
+        'I specialize in digital marketing strategies, content planning, and campaign optimization.',
+      prompt:
+        'You are a marketing specialist with expertise in digital marketing strategies, content planning, and campaign optimization.',
+      isPrivate: false,
+    },
+    {
+      id: 'sample-research-agent',
+      avatar: 'mdi:flask',
+      name: 'Research Assistant',
+      role: 'Data Analysis & Research',
+      description:
+        'I help gather and analyze information, prepare reports, and provide insights based on data.',
+      prompt:
+        'You are a research assistant focused on data analysis, information gathering, and providing factual insights.',
+      isPrivate: false,
+    },
+  ]);
 
   // Derived state for current organization
   const currentOrganization = useMemo(() => {
@@ -359,11 +398,31 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
   const [saveError, setSaveError] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
 
-  // Derive assigned agents based on currentOrganization.agent
-  const assignedAgents = useMemo(
-    () => globalAgents.filter(agent => currentOrganization.agents.some(a => a.id === agent.id)),
-    [globalAgents, currentOrganization.agents]
+  // Helper function to get agent by ID (whether global or private)
+  const getAgentById = useCallback(
+    (agentId: string): Agent | undefined => {
+      // First check global agents
+      const globalAgent = globalAgents.find(agent => agent.id === agentId);
+      if (globalAgent) return globalAgent;
+
+      // Then check private agents
+      const privateAgent = currentOrganization.privateAgents?.find(agent => agent.id === agentId);
+      if (privateAgent) return privateAgent;
+
+      return undefined;
+    },
+    [globalAgents, currentOrganization]
   );
+
+  // Derive assigned agents based on currentOrganization.agents
+  const assignedAgents = useMemo(() => {
+    // Combine imported global agents with private agents
+    const importedGlobalAgents = currentOrganization.agents
+      .map(id => globalAgents.find(agent => agent.id === id))
+      .filter(agent => agent !== undefined) as Agent[];
+
+    return [...importedGlobalAgents, ...(currentOrganization.privateAgents || [])];
+  }, [globalAgents, currentOrganization.agents, currentOrganization.privateAgents]);
 
   // Update icon whenever currentOrganization changes
   useEffect(() => {
@@ -411,18 +470,22 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
     }
   }, [status]); // Run only when auth status changes
 
-  // Load global agents on auth
+  // Load global agents on auth (replace with local data for now)
   useEffect(() => {
     if (status !== 'authenticated') return;
-    (async () => {
-      try {
-        const snap = await getDocs(collection(db, 'agents'));
-        const agents = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Agent, 'id'>) }));
-        setGlobalAgents(agents);
-      } catch (error) {
-        console.error('Error loading agents:', error);
-      }
-    })();
+
+    // For now, just use the initial state data
+    // In a real app, this would load from Firestore
+    // const fetchGlobalAgents = async () => {
+    //   try {
+    //     const snap = await getDocs(collection(db, 'agents'));
+    //     const agents = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<Agent, 'id'>) }));
+    //     setGlobalAgents(agents);
+    //   } catch (error) {
+    //     console.error('Error loading agents:', error);
+    //   }
+    // };
+    // fetchGlobalAgents();
   }, [status]);
 
   // Update icon when provider changes
@@ -465,12 +528,13 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
   };
 
   const addOrganization = (name: string) => {
-    if (organizations.length >= 4) {
-      setSaveError('You can only create up to 4 organizations with the current plan.');
+    if (organizations.length >= 2) {
+      setSaveError('You can only create up to 2 organizations with the current plan.');
       return;
     }
 
     const newOrg = createDefaultOrganization(name);
+    // This ensures the organization has at least one project by using createDefaultOrganization
     const updatedOrgs = [...organizations, newOrg];
 
     setOrganizations(updatedOrgs);
@@ -551,37 +615,147 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
     );
   };
 
-  // Functions to manage agents
-  const addAgent = async (agentData: Omit<Agent, 'id'>) => {
-    if (!isAuth || !session?.user?.id) return;
-    const ref = await addDoc(collection(db, 'agents'), agentData);
-    setGlobalAgents(prev => [...prev, { ...agentData, id: ref.id }]);
-    const orgRef = doc(db, `users/${session.user.id}/organizations/${currentOrganization.id}`);
-    await updateDoc(orgRef, { agent: arrayUnion(ref.id) });
-    setOrganizations(orgs =>
-      orgs.map(o => (o.id === currentOrganization.id ? { ...o, agent: [...o.agents, ref.id] } : o))
-    );
+  // Agent management functions
+  const addAgent = async (agentData: Omit<Agent, 'id'>, isPrivate = false) => {
+    try {
+      const newAgentId = uuidv4(); // Generate ID locally for now
+      const newAgent: Agent = { ...agentData, id: newAgentId, isPrivate };
+
+      if (isPrivate) {
+        // Add to organization's private agents
+        setOrganizations(orgs =>
+          orgs.map(org => {
+            if (org.id === currentOrganizationId) {
+              const updatedPrivateAgents = [...(org.privateAgents || []), newAgent];
+              return { ...org, privateAgents: updatedPrivateAgents };
+            }
+            return org;
+          })
+        );
+      } else {
+        // Add to global agents and reference in organization
+        setGlobalAgents(prev => [...prev, newAgent]);
+
+        // Add reference to organization's agents list
+        setOrganizations(orgs =>
+          orgs.map(org => {
+            if (org.id === currentOrganizationId) {
+              const updatedAgents = [...(org.agents || []), newAgentId];
+              return { ...org, agents: updatedAgents };
+            }
+            return org;
+          })
+        );
+      }
+
+      clientLogger.debug('Agent added successfully', '', { isPrivate });
+      return Promise.resolve();
+    } catch (error) {
+      clientLogger.error('Error adding agent:', '', error);
+      return Promise.reject(error);
+    }
   };
 
   const updateAgent = async (agentId: string, data: Partial<Omit<Agent, 'id'>>) => {
-    if (!isAuth) return;
-    const agentRef = doc(db, 'agents', agentId);
-    await updateDoc(agentRef, data);
-    setGlobalAgents(prev => prev.map(a => (a.id === agentId ? { ...a, ...data } : a)));
+    try {
+      // Check if this is a global agent
+      const isGlobalAgent = globalAgents.some(agent => agent.id === agentId);
+
+      if (isGlobalAgent) {
+        // Update in global agents
+        setGlobalAgents(prev => prev.map(a => (a.id === agentId ? { ...a, ...data } : a)));
+      } else {
+        // Update in organization's private agents
+        setOrganizations(orgs =>
+          orgs.map(org => {
+            if (org.id === currentOrganizationId) {
+              const updatedPrivateAgents = (org.privateAgents || []).map(agent =>
+                agent.id === agentId ? { ...agent, ...data } : agent
+              );
+              return { ...org, privateAgents: updatedPrivateAgents };
+            }
+            return org;
+          })
+        );
+      }
+
+      clientLogger.debug('Agent updated successfully', '', { agentId });
+      return Promise.resolve();
+    } catch (error) {
+      clientLogger.error('Error updating agent:', '', error);
+      return Promise.reject(error);
+    }
   };
 
   const removeAgent = async (agentId: string) => {
-    if (!isAuth) return;
-    // unassign from org
-    const orgRef = doc(db, `users/${session?.user?.id}/organizations/${currentOrganization.id}`);
-    await updateDoc(orgRef, { agent: arrayRemove(agentId) });
-    setOrganizations(orgs =>
-      orgs.map(o =>
-        o.id === currentOrganization.id
-          ? { ...o, agent: o.agents.filter(agent => agent.id !== agentId) }
-          : o
-      )
-    );
+    try {
+      // Check if this is a global agent reference or private agent
+      const isGlobalAgentRef = currentOrganization.agents.includes(agentId);
+
+      if (isGlobalAgentRef) {
+        // Remove reference from organization
+        setOrganizations(orgs =>
+          orgs.map(org => {
+            if (org.id === currentOrganizationId) {
+              const updatedAgents = org.agents.filter(id => id !== agentId);
+              return { ...org, agents: updatedAgents };
+            }
+            return org;
+          })
+        );
+      } else {
+        // Remove from organization's private agents
+        setOrganizations(orgs =>
+          orgs.map(org => {
+            if (org.id === currentOrganizationId) {
+              const updatedPrivateAgents = (org.privateAgents || []).filter(
+                agent => agent.id !== agentId
+              );
+              return { ...org, privateAgents: updatedPrivateAgents };
+            }
+            return org;
+          })
+        );
+      }
+
+      clientLogger.debug('Agent removed successfully', '', { agentId });
+      return Promise.resolve();
+    } catch (error) {
+      clientLogger.error('Error removing agent:', '', error);
+      return Promise.reject(error);
+    }
+  };
+
+  const importAgent = async (agentId: string) => {
+    try {
+      // Check if agent exists in global agents
+      const agent = globalAgents.find(a => a.id === agentId);
+      if (!agent) {
+        throw new Error(`Agent with ID ${agentId} not found in global agents`);
+      }
+
+      // Check if agent is already imported
+      if (currentOrganization.agents.includes(agentId)) {
+        throw new Error(`Agent with ID ${agentId} is already imported`);
+      }
+
+      // Add reference to organization's agents list
+      setOrganizations(orgs =>
+        orgs.map(org => {
+          if (org.id === currentOrganizationId) {
+            const updatedAgents = [...org.agents, agentId];
+            return { ...org, agents: updatedAgents };
+          }
+          return org;
+        })
+      );
+
+      clientLogger.debug('Agent imported successfully', '', { agentId });
+      return Promise.resolve();
+    } catch (error) {
+      clientLogger.error('Error importing agent:', '', error);
+      return Promise.reject(error);
+    }
   };
 
   // Project management functions
@@ -669,6 +843,11 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       addAgent,
       updateAgent,
       removeAgent,
+      importAgent,
+      getAgentById,
+
+      // Assign agents for backward compatibility
+      agents: assignedAgents,
 
       // Project management
       addProject,
@@ -680,7 +859,6 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       model: currentOrganization.ai_params.model,
       temperature: currentOrganization.ai_params.temperature,
       organizationPrompt: currentOrganization.ai_params.organizationPrompt,
-      agents: currentOrganization.agents,
       name: currentOrganization.name,
       icon,
       preferences: currentOrganization.settings,
@@ -710,6 +888,9 @@ export const OrganizationContextProvider: React.FC<{ children: React.ReactNode }
       isSaving,
       saveError,
       status,
+      globalAgents,
+      assignedAgents,
+      getAgentById,
     ]
   );
 

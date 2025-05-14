@@ -16,7 +16,7 @@ const Header = () => {
       setIsVisible(false);
 
       const handleMouseOver = (e: MouseEvent) => {
-        // console.log('Mouse moved', e.clientY, isNavOpen);
+        // console.log('Mouse moved', e.clientY);
         if (e.clientY <= 15) {
           setIsVisible(true);
         } else if ((e.clientY > 250 && isVisible) || (e.clientY > 15 && !isVisible)) {

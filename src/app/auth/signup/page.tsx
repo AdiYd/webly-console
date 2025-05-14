@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { signIn, getProviders } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { signIn } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/ui/icon';
 import Link from 'next/link';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { setDoc, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase-client';
+import { fadeInVariants } from '../signin/page';
+import { motion } from 'framer-motion';
 
 export default function SignUp() {
   const searchParams = useSearchParams();
@@ -17,8 +19,10 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [terms, setTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [dismissError, setDismissError] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
   // Handle URL error parameters with enhanced Google-specific errors
@@ -58,6 +62,7 @@ export default function SignUp() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setDismissError(false);
     setSuccessMessage('');
 
     // Verify passwords match
@@ -108,6 +113,8 @@ export default function SignUp() {
         // Handle specific Firebase errors
         if (error.message.includes('auth/email-already-in-use')) {
           setError('An account with this email already exists. Please sign in instead.');
+        } else if (error.message.includes('auth/weak-password')) {
+          setError('The password is too weak. Please choose a stronger password.');
         } else {
           setError(`Error creating account: ${error.message}`);
         }
@@ -180,9 +187,19 @@ export default function SignUp() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md z-10 space-y-8 card p-8 max-sm:px-5 my-8 shadow-lg">
+    <motion.div
+      {...fadeInVariants}
+      transition={{ duration: 0.5 }}
+      className="flex min-h-screen flex-col items-center justify-center py-12 mt-4 px-4 sm:px-6 lg:px-8"
+    >
+      <div className="w-full max-w-md z-10 space-y-8 card p-8 pt-6 max-sm:px-5 my-8 shadow-lg">
         <div className="text-center">
+          <Icon
+            icon="mdi:account"
+            width={25}
+            height={25}
+            className="rounded-full p-3 bg-gradient-to-br from-base-200/80 to-base-200/20 mx-auto"
+          />
           <h1 className="text-2xl font-bold">Create an account</h1>
           <p className="mt-2 text-sm text-base-content/70">
             Already have an account?{' '}
@@ -213,9 +230,13 @@ export default function SignUp() {
           </div>
         </div>
 
-        {error && (
+        {error && !dismissError && (
           <div className="alert alert-error">
-            <Icon icon="mdi:close-circle" className="h-5 w-5" />
+            <Icon
+              onClick={() => setDismissError(true)}
+              icon="mdi:close-circle"
+              className="h-5 w-5 cursor-pointer hover:opacity-80 relative -bottom-0.5"
+            />
             <span>{error}</span>
           </div>
         )}
@@ -303,7 +324,14 @@ export default function SignUp() {
 
           <div>
             <label className="flex items-center">
-              <input type="checkbox" required className="checkbox checkbox-xs checkbox-primary" />
+              <input
+                name="terms"
+                checked={terms}
+                type="checkbox"
+                required
+                className="checkbox checkbox-xs checkbox-primary"
+                onChange={e => setTerms(e.target.checked)}
+              />
               <span className="ml-2 text-sm">
                 I agree to the{' '}
                 <Link href="/terms" className="text-primary hover:underline">
@@ -316,7 +344,7 @@ export default function SignUp() {
               </span>
             </label>
           </div>
-          <button type="submit" className="btn btn-primary w-full" disabled={isLoading}>
+          <button type="submit" className="btn btn-primary w-full" disabled={isLoading || !terms}>
             {isLoading ? (
               <span className="loading loading-spinner loading-sm"></span>
             ) : (
@@ -328,6 +356,6 @@ export default function SignUp() {
           </button>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 }

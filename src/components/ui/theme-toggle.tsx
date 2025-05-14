@@ -4,6 +4,7 @@ import { useTheme, type Theme } from './theme-provider';
 import { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { useBreakpoint } from '@/hooks/use-screen';
+import { useOrganization } from '@/context/OrganizationContext';
 
 // Theme categories for better organization
 export const themeCategories = {
@@ -89,10 +90,15 @@ export function ThemeToggle() {
   const { theme, setTheme, isDarkTheme } = useTheme();
   const { isMobile } = useBreakpoint();
   const [isOpen, setIsOpen] = useState(false);
+  const { preferences, setPreferences } = useOrganization();
   const [activeCategory, setActiveCategory] = useState<string>('base');
 
   // Function to apply theme
   const applyTheme = (newTheme: Theme) => {
+    setPreferences({
+      ...preferences,
+      theme: newTheme,
+    });
     setTheme(newTheme);
     setIsOpen(false);
   };

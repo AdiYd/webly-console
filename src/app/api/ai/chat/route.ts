@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     return new Response(
       JSON.stringify({
         error:
-          'Unauthorized user, please <a href="/login">log in</a> or <a href="/signup">sign up</a>',
+          'Unauthorized user, please <a class="link font-semibold hover:opacity-60" href="/auth/signin">log in</a> or <a class="link font-semibold hover:opacity-60" href="/auth/signup">sign up</a>',
       }),
       {
         status: 401,
@@ -430,8 +430,17 @@ export async function POST(req: NextRequest) {
       return processedMessage;
     });
 
-    // Common set of tools for all providers that support tools
-    const commonTools = { ...loggedFirestoreTools, ...agentsTools(agents) };
+    // Get agent tools with only defined properties
+    const agentToolsObj = agentsTools(agents);
+    const filteredAgentTools = Object.fromEntries(
+      Object.entries(agentToolsObj).filter(([_, value]) => value !== undefined)
+    );
+
+    // Create commonTools with only defined tools
+    const commonTools = {
+      ...loggedFirestoreTools,
+      ...filteredAgentTools,
+    };
 
     // Use streamText for different providers
     let result;

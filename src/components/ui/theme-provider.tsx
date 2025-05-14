@@ -1,5 +1,6 @@
 'use client';
 
+import { useOrganization } from '@/context/OrganizationContext';
 import { clientLogger } from '@/utils/logger';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
@@ -81,10 +82,8 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(defaultTheme);
   const [isDarkTheme, setIsDarkTheme] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
   useEffect(() => {
     const savedTheme = localStorage.getItem(storageKey) as Theme | null;
-    clientLogger.debug('Theme', 'Saved theme from localStorage:', savedTheme);
     if (savedTheme) {
       setTheme(savedTheme);
     }
@@ -96,11 +95,11 @@ export function ThemeProvider({
 
     if (theme === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'forest'
+        ? 'dark'
         : 'autumn';
 
       root.setAttribute('data-theme', systemTheme);
-      setIsDarkTheme(systemTheme === 'forest');
+      setIsDarkTheme(systemTheme === 'dark');
       return;
     }
 
@@ -118,7 +117,7 @@ export function ThemeProvider({
       isLoading,
       isDarkTheme,
     }),
-    [theme, isLoading, storageKey]
+    [theme, isLoading, storageKey, isDarkTheme]
   );
 
   return (

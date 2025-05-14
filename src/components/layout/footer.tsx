@@ -18,13 +18,13 @@ const Footer = () => {
           <span className="text-lg font-semibold">Webly AI</span>
         </div>
         <div className="mt-4 md:mt-0 flex space-x-4">
-          <a href="#" className="link link-hover text-primary">
+          <a href="#" className="link link-hover">
             Privacy Policy
           </a>
-          <a href="#" className="link link-hover text-primary">
+          <a href="#" className="link link-hover">
             Terms of Service
           </a>
-          <a href="#" className="link link-hover text-primary">
+          <a href="#" className="link link-hover">
             Contact Us
           </a>
         </div>

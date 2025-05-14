@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 
 // Define routes that require authentication
-const protectedRoutes = ['/dashboard', '/settings', '/profile', '/account', '/projects'];
+const protectedRoutes = [
+  '/dashboard',
+  '/settings',
+  '/profile',
+  '/account',
+  // '/projects',
+  // '/projects/new',
+];
 
 // Define routes that are only for unauthenticated users
 const authOnlyRoutes = ['/auth/signin', '/auth/signup', '/auth/forgot-password'];

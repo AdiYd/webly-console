@@ -64,7 +64,7 @@ export default function Home() {
       <section className="hero py-20 ">
         <div className="hero-content text-center">
           <div className="max-w-md md:max-w-3xl">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            <h1 className="text-4xl md:text-6xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent font-bold mb-6">
               Your AI-Powered Learning Platform
             </h1>
             <p className="text-xl md:text-2xl mb-10 opacity-80">

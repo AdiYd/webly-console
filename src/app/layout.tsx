@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/components/ui/theme-provider';
 import { auth } from '@/auth'; // Import auth to get session
 import { OrganizationContextProvider } from '@/context/OrganizationContext';
 
-import './globals.css';
+import '../globals.css';
 import Footer from '@/components/layout/footer';
 import Header from '@/components/layout/header';
 import BlurDecoratives from '@/components/layout/blurDecoratives';
@@ -36,7 +36,8 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${robotoSans.className} ${inter.className} font-sans relative max-w-full overflow-x-hidden min-h-screen max-h-screen flex flex-col`}
+        className={`font-sans* ${robotoSans.className}* ${inter.className}*  relative max-w-full overflow-x-hidden min-h-screen max-h-screen flex flex-col
+          `}
       >
         <SessionProvider refetchInterval={0} refetchOnWindowFocus={false} session={session}>
           <ThemeProvider defaultTheme="system" storageKey="theme">

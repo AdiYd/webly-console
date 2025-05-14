@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import { useOrganization } from '@/context/OrganizationContext';
 import { clientLogger } from '@/utils/logger';
 import { StreamedMessage } from './streamedMessage';
+import '@/globals.css';
 
 // File handling constants
 const MAX_FILE_SIZE_MB = 20;
@@ -406,48 +407,6 @@ export default function ChatInterface({
   };
 
   /**
-   * Simplified message rendering - no special handling for streaming
-   * Let the useChat hook handle streaming updates naturally
-   */
-  const renderMessage = (message: any, index: number) => {
-    const isUserMessage = message.role === 'user';
-    const isFirstMessage = index === 0;
-
-    return (
-      <div
-        key={message.id || index}
-        className={`chat ${isFirstMessage ? 'mt-12' : ''} ${
-          isUserMessage ? 'chat-end' : 'chat-start'
-        }`}
-      >
-        {!isMinimized && (
-          <>
-            <div className="chat-image avatar online">
-              <div className="w-8 rounded-full bg-base-300">
-                {isUserMessage ? (
-                  <img className="rounded-full" src={userImage} alt={userName || 'User profile'} />
-                ) : (
-                  <Icon icon={'carbon:bot'} className="w-6 h-6 m-2" />
-                )}
-              </div>
-            </div>
-            <div className="chat-header mb-1">{isUserMessage ? 'You' : 'AI Agent'}</div>
-          </>
-        )}
-        <div
-          className={`${
-            isUserMessage
-              ? 'chat-bubble-primary text-primary-content chat-bubble'
-              : `${isMinimized ? 'text-base-content/90' : 'chat-bubble chat-bubble-accent'}`
-          }`}
-        >
-          {typeof message.content === 'string' ? formatMessageContent(message.content) : null}
-        </div>
-      </div>
-    );
-  };
-
-  /**
    * Renders the empty state when no messages exist
    */
   const renderEmptyState = () => (
@@ -558,7 +517,7 @@ export default function ChatInterface({
         {error && !isLoading && (
           <div className="alert alert-error w-fit ml-12 shadow-lg mt-2">
             <Icon icon="carbon:warning" className="w-6 h-6" />
-            <span>Error: {error}</span>
+            <span dangerouslySetInnerHTML={{ __html: `Error: ${error}` }} />
             <button className="btn btn-sm btn-ghost" onClick={() => setError(null)}>
               <Icon icon="carbon:close" className="w-4 h-4 mr-2*" />
               Close

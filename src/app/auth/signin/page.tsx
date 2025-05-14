@@ -8,6 +8,13 @@ import { signIn } from 'next-auth/react';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase/firebase-client';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { motion } from 'framer-motion';
+
+export const fadeInVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: 20 },
+};
 
 export default function SignIn() {
   const router = useRouter();
@@ -180,9 +187,19 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="card w-full max-w-md z-10 space-y-8 p-8 max-sm:px-5 shadow-lg">
+    <motion.div
+      transition={{ duration: 0.5 }}
+      {...fadeInVariants}
+      className="flex min-h-screen flex-col items-center mt-4 justify-center py-12 px-4 sm:px-6 lg:px-8"
+    >
+      <div className="card w-full max-w-md z-10 space-y-8 p-8 pt-6 max-sm:px-5 shadow-lg">
         <div className="text-center">
+          <Icon
+            icon="mdi:lock"
+            width={20}
+            height={20}
+            className="rounded-full p-3 bg-gradient-to-br from-base-200/80 to-base-200/20 mx-auto"
+          />
           <h1 className="text-2xl font-bold">Sign in to your account</h1>
           <p className="mt-2 text-sm text-base-content/70">
             Or{' '}
@@ -289,6 +306,6 @@ export default function SignIn() {
           </div>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 }

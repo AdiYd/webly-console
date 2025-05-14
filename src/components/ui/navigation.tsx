@@ -200,13 +200,13 @@ export function Navigation() {
         {assignedAgents.map(agent => (
           <Link key={agent.id} href={`/agents/${agent.id}`} className="avatar online">
             <div className="mask mask-circle w-8 h-8 ring ring-offset-2 ring-primary">
-              <img src={agent.avatar} alt={agent.name} title={agent.name} />
+              <Icon icon={agent.avatar} width={30} className="rounded-full p-2 bg-base-300" />
             </div>
           </Link>
         ))}
         <Link
           href="/account"
-          className="avatar placeholder w-8 h-8 flex items-center justify-center bg-base-200"
+          className="avatar placeholder w-8 flex items-center justify-center hover:bg-base-200 h-fit rounded-full"
         >
           <span className="text-base-content">+</span>
         </Link>
@@ -228,7 +228,7 @@ export function Navigation() {
     const userMenuContent = (
       <>
         <div className="p-4 border-b bg-base-100/90 border-base-200">
-          <div className="flex items-center gap-6">
+          <Link href="/account" className="flex items-center gap-6">
             <div className="avatar">
               <div className="w-12 mask mask-squircle">
                 <img loading="eager" src={userData.image} alt={userData.name} />
@@ -239,7 +239,7 @@ export function Navigation() {
               <p className="text-sm opacity-70">{userData.email}</p>
               <div className="badge badge-primary mt-1 badge-md">{userData.role}</div>
             </div>
-          </div>
+          </Link>
         </div>
 
         <ul className="menu bg-base-100/90 p-4 gap-2">
@@ -346,7 +346,7 @@ export function Navigation() {
     if (agentsCarousel) {
       authElement = (
         <>
-          {agentsCarousel}
+          {/* {agentsCarousel} */}
           {authElement}
         </>
       );
@@ -372,13 +372,13 @@ export function Navigation() {
   }
 
   return (
-    <div className="navbar min-h-14 bg-base-100/40 backdrop-blur-lg px-4 border-transparent border-b-zinc-500/30 border-[0.8px] relative z-10">
+    <div className="navbar min-h-14 bg-base-100/20 backdrop-blur-lg px-4 border-transparent border-b-zinc-500/30 border-[0.8px] relative z-10">
       <div className="navbar-start">
         <div className="dropdown">
           <div
             tabIndex={0}
             role="button"
-            className="btn btn-ghost btn-sm lg:hidden"
+            className="btn btn-ghost btn-sm lg:hidden relative right-2"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             <svg

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useId, useRef } from 'react';
+import { useState, useEffect, useId, useRef, use, useMemo } from 'react';
 import { useOrganization, Organization, AIProvider, Agent } from '@/context/OrganizationContext';
 import { cn } from '@/lib/utils';
 import { useBreakpoint } from '@/hooks/use-screen';
 import { Icon } from '@/components/ui/icon';
 import { useTheme, Theme, darkThemes } from '@/components/ui/theme-provider';
 import { themeCategories, themeEmoji, themeIconify } from '@/components/ui/theme-toggle';
+import { useSession } from 'next-auth/react';
 
 // Predefined avatar icons for agents
 const agentAvatars = [
@@ -221,7 +222,7 @@ function OrganizationModal({
   );
 }
 
-// --- AgentModal Component (Same as before) ---
+// --- AgentModal Component (Enhanced with private flag) ---
 interface AgentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -237,6 +238,7 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
   const [role, setRole] = useState(agent?.role || '');
   const [description, setDescription] = useState(agent?.description || '');
   const [prompt, setPrompt] = useState(agent?.prompt || '');
+  const [isPrivate, setIsPrivate] = useState(agent?.isPrivate || false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -246,12 +248,16 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
       setName(agent.name);
       setRole(agent.role);
       setDescription(agent.description);
+      setPrompt(agent.prompt || '');
+      setIsPrivate(agent.isPrivate || false);
     } else {
       // Reset form for new agent
       setAvatar(agentAvatars[0]);
       setName('');
       setRole('');
       setDescription('');
+      setPrompt('');
+      setIsPrivate(false);
     }
   }, [agent, isOpen]);
 
@@ -259,7 +265,7 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
     e.preventDefault();
     if (!name || !role || !description) return; // Basic validation
 
-    onSave({ avatar, name, role, description, prompt }, agent?.id);
+    onSave({ avatar, name, role, description, prompt, isPrivate }, agent?.id);
     onClose();
   };
 
@@ -276,7 +282,7 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
 
   return (
     <dialog id={modalId} className="modal">
-      <div className="modal-box max-w-md">
+      <div className="modal-box max-w-xl p-8">
         <h3 className="font-bold text-lg mb-4">{title}</h3>
         <form ref={formRef} onSubmit={handleSubmit}>
           {/* Avatar Selection */}
@@ -350,6 +356,26 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
             </label>
           </div>
 
+          {/* Private Agent Toggle */}
+          <div className="form-control mb-4">
+            <label className="label cursor-pointer justify-start gap-3">
+              <input
+                type="checkbox"
+                className="checkbox checkbox-primary checkbox-sm"
+                checked={isPrivate}
+                onChange={e => setIsPrivate(e.target.checked)}
+              />
+              <span className="label-text font-medium">Private Agent</span>
+              <span className="text-xs opacity-70">(Only available in this organization)</span>
+            </label>
+            <label className="label pt-0">
+              <span className="label-text-alt pl-6">
+                If unchecked, this agent will be added to the global catalog and can be imported by
+                other organizations.
+              </span>
+            </label>
+          </div>
+
           <div className="modal-action">
             <button type="button" className="btn btn-ghost" onClick={onClose}>
               Cancel
@@ -359,6 +385,127 @@ function AgentModal({ isOpen, onClose, onSave, agent, title = 'Add New Agent' }:
             </button>
           </div>
         </form>
+      </div>
+      <form method="dialog" className="modal-backdrop">
+        <button onClick={onClose}>close</button>
+      </form>
+    </dialog>
+  );
+}
+
+// --- Import Global Agent Modal ---
+interface ImportAgentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onImport: (agentId: string) => void;
+  availableAgents: Agent[];
+  currentAgentIds: string[];
+}
+
+function ImportAgentModal({
+  isOpen,
+  onClose,
+  onImport,
+  availableAgents,
+  currentAgentIds,
+}: ImportAgentModalProps) {
+  const modalId = useId();
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
+
+  // Reset selection when modal opens
+  useEffect(() => {
+    if (isOpen) setSelectedAgentId('');
+  }, [isOpen]);
+
+  // Filter out already imported agents
+  const importableAgents = availableAgents.filter(
+    agent => !agent.isPrivate && !currentAgentIds.includes(agent.id)
+  );
+
+  const handleImport = () => {
+    if (selectedAgentId) {
+      onImport(selectedAgentId);
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    const modal = document.getElementById(modalId) as HTMLDialogElement | null;
+    if (modal) {
+      if (isOpen) {
+        modal.showModal();
+      } else {
+        modal.close();
+      }
+    }
+  }, [isOpen, modalId]);
+
+  return (
+    <dialog id={modalId} className="modal">
+      <div className="modal-box max-w-xl p-8">
+        <h3 className="font-bold text-lg mb-4">Import Global Agent</h3>
+
+        {importableAgents.length > 0 ? (
+          <div className="my-4">
+            <p className="text-sm text-base-content/70 mb-4">
+              Select an agent from the global catalog to import into your organization:
+            </p>
+
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {importableAgents.map(agent => (
+                <div
+                  key={agent.id}
+                  className={`p-3 border rounded-lg cursor-pointer flex gap-3 items-center ${
+                    selectedAgentId === agent.id
+                      ? 'border-primary bg-primary/10'
+                      : 'border-base-300 hover:bg-base-200'
+                  }`}
+                  onClick={() => setSelectedAgentId(agent.id)}
+                >
+                  <div className="avatar">
+                    <Icon icon={agent.avatar} className="rounded-full p-2 bg-base-300" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium">{agent.name}</h4>
+                    <p className="text-xs text-base-content/80">{agent.role}</p>
+                    <p className="text-xs text-base-content/70 line-clamp-2 mt-1">
+                      {agent.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="modal-action">
+              <button type="button" className="btn btn-ghost" onClick={onClose}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!selectedAgentId}
+                onClick={handleImport}
+              >
+                Import Agent
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="alert mb-4">
+              <Icon icon="mdi:information" className="w-6 h-6" />
+              <span>
+                No global agents available for import. All global agents are already imported or
+                none exist.
+              </span>
+            </div>
+            <div className="modal-action">
+              <button type="button" className="btn" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <form method="dialog" className="modal-backdrop">
         <button onClick={onClose}>close</button>
@@ -461,6 +608,7 @@ export default function ProfilePage() {
     temperature,
     organizationPrompt,
     agents,
+    globalAgents,
     availableProviders,
     setProvider,
     setModel,
@@ -469,17 +617,19 @@ export default function ProfilePage() {
     addAgent,
     updateAgent,
     removeAgent,
+    importAgent,
     preferences,
     setPreferences,
     lastSaved,
     isSaving,
     saveError,
   } = useOrganization();
-
+  const { data: user } = useSession();
+  console.log('User:', user);
   // Placeholder for user role
-  const userRole = 'Trial'; // Hardcoded for demonstration
+  const userRole = user?.user.role || 'Trial'; // Replace with actual user role logic
   const maxAgents = userRole === 'Trial' ? 2 : 5;
-  const maxOrganizations = 4;
+  const maxOrganizations = 2;
 
   const { theme, setTheme, isDarkTheme } = useTheme();
   const { isMobile } = useBreakpoint();
@@ -489,6 +639,9 @@ export default function ProfilePage() {
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
   const [currentAgent, setCurrentAgent] = useState<Agent | undefined>(undefined);
   const [agentModalTitle, setAgentModalTitle] = useState('Add New Agent');
+
+  // Import agent modal state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Organization modal state
   const [isOrgModalOpen, setIsOrgModalOpen] = useState(false);
@@ -543,6 +696,7 @@ export default function ProfilePage() {
     if (organizations.length >= maxOrganizations) {
       // Show toast error
       setSavedStatus('error');
+      setTimeout(() => setSavedStatus('idle'), 8000);
       return;
     }
     setCurrentEditOrg(undefined);
@@ -613,9 +767,40 @@ export default function ProfilePage() {
       updateAgent(agentId, agentData);
     } else {
       // Add new agent
-      addAgent(agentData);
+      addAgent(agentData, agentData.isPrivate);
     }
     setCurrentAgent(undefined);
+  };
+
+  const handleImportAgent = (agentId: string) => {
+    try {
+      if (!importAgent) {
+        console.error('importAgent function is not available');
+        return;
+      }
+
+      // Call importAgent with await and handle the promise properly
+      importAgent(agentId)
+        .then(() => {
+          // Show success message with toast
+          setSavedStatus('saved');
+          setTimeout(() => setSavedStatus('idle'), 2000);
+        })
+        .catch(error => {
+          console.error('Failed to import agent:', error);
+          // Show error message
+          setSavedStatus('error');
+          setTimeout(() => setSavedStatus('idle'), 3000);
+        });
+    } catch (error) {
+      console.error('Error in handleImportAgent:', error);
+      setSavedStatus('error');
+      setTimeout(() => setSavedStatus('idle'), 3000);
+    }
+  };
+
+  const handleOpenImportModal = () => {
+    setIsImportModalOpen(true);
   };
 
   const recentChats = [
@@ -655,6 +840,11 @@ export default function ProfilePage() {
     // Otherwise full date/time
     return lastSaved.toLocaleString();
   };
+
+  // Get current organization's agent IDs for filtering imports
+  const currentAgentIds = useMemo(() => {
+    return currentOrganization?.agents || [];
+  }, [currentOrganization]);
 
   return (
     <div className="container mx-auto px-4 mt-12 mb-18 py-6 md:py-8">
@@ -766,14 +956,23 @@ export default function ProfilePage() {
                       {agents?.length}/{maxAgents}
                     </span>
                   </h3>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={handleAddAgent}
-                    disabled={agents.length >= maxAgents}
-                  >
-                    <Icon icon="mdi:plus" className="mr-1" />
-                    Add Agent
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      className="btn btn-sm btn-outline btn-primary"
+                      onClick={handleOpenImportModal}
+                    >
+                      <Icon icon="mdi:import" className="mr-1" />
+                      Import Agent
+                    </button>
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={handleAddAgent}
+                      disabled={agents.length >= maxAgents}
+                    >
+                      <Icon icon="mdi:plus" className="mr-1" />
+                      Add Agent
+                    </button>
+                  </div>
                 </div>
 
                 {/* Agent Grid - New responsive grid layout */}
@@ -793,7 +992,9 @@ export default function ProfilePage() {
                   <div className="text-center py-10 border border-dashed rounded-lg bg-base-200/50">
                     <Icon
                       icon="mdi:account-plus"
-                      className="w-12 h-12 mx-auto text-base-content/30 mb-2"
+                      width={40}
+                      height={40}
+                      className="mx-auto text-base-content/30 mb-2"
                     />
                     <p className="text-base-content/60">
                       No specialized agents added yet.
@@ -802,6 +1003,13 @@ export default function ProfilePage() {
                         className="btn btn-link btn-xs normal-case ml-1 text-primary"
                       >
                         Create your first agent
+                      </button>
+                      <span className="mx-1">or</span>
+                      <button
+                        onClick={handleOpenImportModal}
+                        className="btn btn-link btn-xs normal-case text-primary"
+                      >
+                        import from global catalog
                       </button>
                     </p>
                   </div>
@@ -1028,14 +1236,14 @@ export default function ProfilePage() {
         )}
         {savedStatus === 'error' && (
           <div className="toast toast-top toast-center z-50">
-            <div role="alert" className="alert alert-error shadow-lg">
-              <Icon icon="mdi:alert-circle-outline" className="h-6 w-6" />
-              <span>Failed to save changes.</span>
+            <div role="alert" className="alert alert-error relative -bottom-10 shadow-lg">
+              <Icon icon="mdi:alert-circle-outline" className="h-6 w-6 relative -bottom-1" />
+              <span>Failed</span>
             </div>
           </div>
         )}
 
-        {/* Sidebar (Recent Chats, Account Actions) */}
+        {/* Sidebar (Recent Projects, Account Actions) */}
         <div>
           {/* Organization Stats Card (New) */}
           <div className="card bg-base-100 shadow-sm mb-4">
@@ -1105,82 +1313,100 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Recent Chats */}
+          {/* Recent Projects */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4 md:p-6">
-              <h2 className="card-title">Recent Chats</h2>
-              {recentChats.length > 0 ? (
+              <h2 className="card-title">Recent Projects</h2>
+              {currentOrganization.projects.length > 0 ? (
                 <ul className="divide-y divide-base-200">
-                  {recentChats.map(chat => (
-                    <li key={chat.id} className="py-3">
+                  {currentOrganization.projects.map(project => (
+                    <li key={project.id} className="py-3">
                       <a
-                        href={`/chat/${chat.id}`}
+                        href={`/projects/${project.id}`}
                         className="block hover:bg-base-200 rounded-md p-2 -m-2 transition-colors duration-150"
                       >
-                        <h3 className="font-medium text-sm">{chat.title}</h3>
+                        <h3 className="font-medium text-sm">{project.name}</h3>
                         <div className="text-xs text-base-content/70 flex justify-between mt-1">
-                          <span>{chat.date.toLocaleDateString()}</span>
-                          <span>{chat.messages} messages</span>
+                          <span>{new Date(project.updatedAt).toLocaleDateString()}</span>
+                          <span>
+                            {project.description
+                              ? `${project.description.substring(0, 30)}...`
+                              : 'No description'}
+                          </span>
                         </div>
                       </a>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <div className="text-center py-4 text-base-content/70">No recent chats found</div>
+                <div className="text-center py-4 text-base-content/70">No projects found</div>
               )}
-              <div className="card-actions mt-4"></div>
-              <a href="/chat" className="btn btn-sm btn-ghost w-full">
-                View All Chats
-              </a>
+              <div className="card-actions mt-4">
+                <a href="/projects" className="btn btn-sm btn-ghost w-full">
+                  View All Projects
+                </a>
+              </div>
             </div>
-          </div>
 
-          {/* Account Actions */}
-          <div className="card bg-base-100 shadow-sm mt-4 md:mt-6">
-            <div className="card-body p-4 md:p-6">
-              <h2 className="card-title">Account Actions</h2>
-              <div className="py-2">
-                <button className="btn btn-sm btn-outline btn-error w-full">
-                  <Icon icon="mdi:delete-sweep-outline" className="mr-1" />
-                  Delete All Chat History
-                </button>
+            {/* Account Actions - Updated */}
+            <div className="card bg-base-100 shadow-sm mt-4 md:mt-6">
+              <div className="card-body p-4 md:p-6">
+                <h2 className="card-title">Account Actions</h2>
+                <div className="py-2">
+                  <a href="/projects/new" className="btn btn-sm btn-primary w-full mb-2">
+                    <Icon icon="mdi:plus" className="mr-1" />
+                    Create New Project
+                  </a>
+                  <button className="btn btn-sm btn-outline btn-error w-full">
+                    <Icon icon="mdi:delete-sweep-outline" className="mr-1" />
+                    Delete All Project History
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Agent Modal */}
-      <AgentModal
-        isOpen={isAgentModalOpen}
-        onClose={() => setIsAgentModalOpen(false)}
-        onSave={handleSaveAgent}
-        agent={currentAgent}
-        title={agentModalTitle}
-      />
+        {/* Agent Modal */}
+        <AgentModal
+          isOpen={isAgentModalOpen}
+          onClose={() => setIsAgentModalOpen(false)}
+          onSave={handleSaveAgent}
+          agent={currentAgent}
+          title={agentModalTitle}
+        />
 
-      {/* Organization Modal */}
-      <OrganizationModal
-        isOpen={isOrgModalOpen}
-        onClose={() => setIsOrgModalOpen(false)}
-        onSave={handleSaveOrganization}
-        editOrganization={currentEditOrg}
-        title={orgModalTitle}
-      />
+        {/* Import Agent Modal */}
+        <ImportAgentModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onImport={handleImportAgent}
+          availableAgents={globalAgents}
+          currentAgentIds={currentAgentIds}
+        />
 
-      {/* Error toast for settings */}
-      {saveError && (
-        <div className="toast toast-top toast-center z-50">
-          <div role="alert" className="alert alert-error shadow-lg">
-            <Icon icon="mdi:alert-circle-outline" className="h-6 w-6" />
-            <div>
-              <h3 className="font-bold">Error saving settings</h3>
-              <p className="text-sm">{saveError}</p>
+        {/* Organization Modal */}
+        <OrganizationModal
+          isOpen={isOrgModalOpen}
+          onClose={() => setIsOrgModalOpen(false)}
+          onSave={handleSaveOrganization}
+          editOrganization={currentEditOrg}
+          title={orgModalTitle}
+        />
+
+        {/* Error toast for settings */}
+        {saveError && (
+          <div className="toast toast-top toast-center z-50">
+            <div role="alert" className="alert alert-error shadow-lg">
+              <Icon icon="mdi:alert-circle-outline" className="h-6 w-6" />
+              <div>
+                <h3 className="font-bold">Error saving settings</h3>
+                <p className="text-sm">{saveError}</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
