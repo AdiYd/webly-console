@@ -5,8 +5,6 @@ import ChatInterface from '@/components/ai/ChatInterface';
 import { Icon } from '@iconify/react';
 import 'react-resizable/css/styles.css';
 import { useBreakpoint } from '@/hooks/use-screen';
-import { useSession } from 'next-auth/react';
-import { AIProvider, useOrganization } from '@/context/OrganizationContext';
 import { useRouter } from 'next/navigation';
 
 // Define a unified state interface for better organization
@@ -60,8 +58,6 @@ export default function ChatPage() {
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 1024, height: 768 });
   const [isMounted, setIsMounted] = useState(false);
-  const { agents, availableProviders, isAuth, model, provider, setProvider, setModel, icon } =
-    useOrganization();
 
   const navigate = useRouter();
 
@@ -383,48 +379,7 @@ export default function ChatPage() {
           <span className="text-sm ml-4 font-medium">Webly AI Organization</span>
         )}
       </div>
-      {/* Show available agents */}
-      {!chatUI.display.isMinimized && (
-        <div className="flex items-center gap-3">
-          {isAuth &&
-            agents.map((agent, index) => (
-              <div key={index} className="agent-item">
-                {agent.name}
-              </div>
-            ))}
-          <div className="flex items-center gap-3">
-            <Icon icon={icon} className="w-5 h-5" />
-            <select
-              className="select w-max select-sm select-bordered"
-              value={provider}
-              onChange={e => {
-                const newProvider = e.target.value as AIProvider;
-                setProvider(newProvider);
-              }}
-              // disabled={isLoading}
-            >
-              {Object.keys(availableProviders).map(p => (
-                <option key={p} value={p} className="flex items-center">
-                  {availableProviders[p as AIProvider].name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <select
-            className="select w-fit select-sm select-bordered"
-            value={model}
-            onChange={e => setModel(e.target.value)}
-            // disabled={isLoading}
-          >
-            {provider &&
-              availableProviders[provider]?.models.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-          </select>
-        </div>
-      )}
+
       {/* Resize icons */}
       <div className="flex flex-row-reverse gap-2">
         <button

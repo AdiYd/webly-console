@@ -58,12 +58,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Connect Credentials provider with Firebase Auth
     Credentials({
       authorize: async (credentials: any) => {
-        authLog.info('Processing Firebase credentials authorization', { email: credentials.email });
+        authLog.info('Processing Firebase credentials authorization', {
+          email: credentials.email,
+          credentials,
+        });
+
         try {
-          // Check that Firebase is initialized
-          if (!clientAuth) {
-            throw new Error('Firebase Auth is not initialized');
-          }
           if (credentials.providerType === 'google' && credentials.idToken) {
             authLog.info('Processing Google ID token authorization');
             // Verify the ID token using Firebase Admin SDK
@@ -82,6 +82,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             };
           }
 
+          if (!clientAuth) {
+            throw new Error('Firebase Auth is not initialized');
+          }
           // Authenticate with Firebase
           const userCredential = await signInWithEmailAndPassword(
             clientAuth,
@@ -121,18 +124,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           authLog.error('Failed to authorize with Firebase', error);
           return null;
         }
-      },
-    }),
-    // Google provider for Google sign-in
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      authorization: {
-        params: {
-          prompt: 'consent',
-          access_type: 'offline',
-          response_type: 'code',
-        },
       },
     }),
   ],

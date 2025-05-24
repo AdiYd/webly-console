@@ -2,32 +2,35 @@ import { useMediaQuery } from 'react-responsive';
 
 // Common breakpoints (can be adjusted based on your needs)
 export const BREAKPOINTS = {
-  mobile: 640,
-  tablet: 768,
-  laptop: 1024,
-  desktop: 1280,
+  xs: 320,
+  sm: 540,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
 } as const;
 
 export function useBreakpoint() {
-  const isMobile = useMediaQuery({ maxWidth: BREAKPOINTS.mobile });
+  const isSmallMobile = useMediaQuery({ maxWidth: BREAKPOINTS.xs });
+  const isMobile = useMediaQuery({ maxWidth: BREAKPOINTS.sm });
   const isTablet = useMediaQuery({
-    minWidth: BREAKPOINTS.mobile + 1,
-    maxWidth: BREAKPOINTS.tablet,
+    minWidth: BREAKPOINTS.sm + 1,
+    maxWidth: BREAKPOINTS.md,
   });
   const isLaptop = useMediaQuery({
-    minWidth: BREAKPOINTS.tablet + 1,
-    maxWidth: BREAKPOINTS.laptop,
+    minWidth: BREAKPOINTS.md + 1,
+    maxWidth: BREAKPOINTS.lg,
   });
-  const isDesktop = useMediaQuery({ minWidth: BREAKPOINTS.laptop + 1 });
+  const isDesktop = useMediaQuery({ minWidth: BREAKPOINTS.lg + 1 });
 
   // Additional useful combinations
-  const isMobileOrTablet = useMediaQuery({ maxWidth: BREAKPOINTS.tablet });
+  const isMobileOrTablet = useMediaQuery({ maxWidth: BREAKPOINTS.md });
   const isTabletOrLaptop = useMediaQuery({
-    minWidth: BREAKPOINTS.mobile + 1,
-    maxWidth: BREAKPOINTS.laptop,
+    minWidth: BREAKPOINTS.sm + 1,
+    maxWidth: BREAKPOINTS.lg,
   });
 
   return {
+    isSmallMobile,
     isMobile,
     isTablet,
     isLaptop,
@@ -35,7 +38,15 @@ export function useBreakpoint() {
     isMobileOrTablet,
     isTabletOrLaptop,
     // Current breakpoint name
-    breakpoint: isMobile ? 'mobile' : isTablet ? 'tablet' : isLaptop ? 'laptop' : 'desktop',
+    device: isSmallMobile
+      ? 'xs'
+      : isMobile
+      ? 'mobile'
+      : isTablet
+      ? 'tablet'
+      : isLaptop
+      ? 'laptop'
+      : 'desktop',
   } as const;
 }
 

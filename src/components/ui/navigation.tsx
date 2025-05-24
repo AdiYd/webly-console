@@ -8,7 +8,6 @@ import { useSession, signOut } from 'next-auth/react';
 import { Icon } from '@iconify/react';
 import { useBreakpoint } from '@/hooks/use-screen';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useOrganization } from '@/context/OrganizationContext';
 
 interface NavLinkProps {
   href: string;
@@ -70,33 +69,11 @@ export function Navigation() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const session = useSession();
   const { isDesktop } = useBreakpoint();
-  const {
-    currentOrganization,
-    organizations,
-    switchOrganization,
-    agents: assignedAgents,
-  } = useOrganization();
 
   // Prevent hydration mismatch by deferring client-side rendering
   useEffect(() => {
     setIsClientReady(true);
   }, []);
-
-  // Function to get badge color based on organization ID or index
-  const getOrgBadgeColor = (orgId: string): string => {
-    const colors = [
-      'badge-primary',
-      'badge-secondary',
-      'badge-accent',
-      'badge-info',
-      'badge-success',
-      'badge-warning',
-      'badge-error',
-      'badge-neutral',
-    ];
-    const index = organizations.findIndex(org => org.id === orgId);
-    return colors[index % colors.length] || 'badge-neutral'; // Fallback to neutral
-  };
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -121,97 +98,10 @@ export function Navigation() {
   let organizationSwitcher = null; // Initialize switcher element
 
   if (session.status === 'authenticated') {
-    // --- Organization Switcher Logic ---
-    // Only render organization UI after client hydration
-    if (
-      isClientReady &&
-      isDesktop &&
-      currentOrganization &&
-      organizations &&
-      organizations.length > 0
-    ) {
-      if (organizations.length > 1) {
-        // Dropdown for multiple organizations
-        organizationSwitcher = (
-          <div className="dropdown dropdown-hover dropdown-start ml-4">
-            <div
-              tabIndex={0}
-              role="button"
-              className={`badge ${getOrgBadgeColor(
-                currentOrganization.id
-              )} badge-md cursor-pointer flex items-center gap-1 p-3`}
-            >
-              <Icon icon="carbon:building" />
-              <span className="font-semibold">{currentOrganization.name}</span>
-              <Icon icon="carbon:chevron-down" className="ml-1" />
-            </div>
-            <ul
-              tabIndex={0}
-              className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2*"
-            >
-              {organizations.map(org => (
-                <li key={org.id}>
-                  <button
-                    onClick={() => {
-                      switchOrganization(org.id);
-                      return true;
-                    }}
-                    className={`btn btn-sm btn-ghost justify-start ${
-                      org.id === currentOrganization.id ? 'btn-active' : ''
-                    }`}
-                  >
-                    <span className={`badge ${getOrgBadgeColor(org.id)} badge-xs mr-2`}></span>
-                    {org.name}
-                  </button>
-                </li>
-              ))}
-              {/* Optional: Add link to manage organizations */}
-              <div className="divider my-1"></div>
-              <li>
-                <Link href="/account" className="btn btn-sm btn-ghost justify-start text-info">
-                  <Icon icon="carbon:settings-adjust" /> Manage Orgs
-                </Link>
-              </li>
-            </ul>
-          </div>
-        );
-      } else {
-        // Static badge if only one organization
-        organizationSwitcher = (
-          <div
-            className={`badge ${getOrgBadgeColor(
-              currentOrganization.id
-            )} badge-md ml-4 flex items-center gap-1 p-3`}
-          >
-            <Icon icon="carbon:building" />
-            <span className="font-semibold">{currentOrganization.name}</span>
-          </div>
-        );
-      }
-    }
-    // --- End Organization Switcher Logic ---
+    // --- Authenticated Logic ---
 
     // Use sessionExample data for demonstration
     const userData = session.data.user;
-
-    // Agents carousel
-    const agentsCarousel = isDesktop && assignedAgents && assignedAgents.length > 0 && (
-      <div className="flex space-x-2 overflow-x-auto ml-4 items-center">
-        {assignedAgents.map(agent => (
-          <Link key={agent.id} href={`/agents/${agent.id}`} className="avatar online">
-            <div className="mask mask-circle w-8 h-8 ring ring-offset-2 ring-primary">
-              <Icon icon={agent.avatar} width={30} className="rounded-full p-2 bg-base-300" />
-            </div>
-          </Link>
-        ))}
-        <Link
-          href="/account"
-          className="avatar placeholder w-8 flex items-center justify-center hover:bg-base-200 h-fit rounded-full"
-        >
-          <span className="text-base-content">+</span>
-        </Link>
-      </div>
-    );
 
     avatar = (
       <div
@@ -341,16 +231,6 @@ export function Navigation() {
         </AnimatePresence>
       </div>
     );
-
-    // Render agents carousel
-    if (agentsCarousel) {
-      authElement = (
-        <>
-          {/* {agentsCarousel} */}
-          {authElement}
-        </>
-      );
-    }
   } else if (session.status === 'loading') {
     authElement = (
       <div className="navbar-end">

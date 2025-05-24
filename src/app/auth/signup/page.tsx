@@ -159,7 +159,7 @@ export default function SignUp() {
 
       // Sign in to NextAuth using the credentials provider with the ID token
       console.log('Attempting NextAuth sign-in with Firebase ID token');
-      const signInResponse = await signIn('credentials', {
+      await signIn('credentials', {
         idToken: idToken,
         providerType: 'google',
         id: user.uid,

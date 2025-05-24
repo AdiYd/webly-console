@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Roboto } from 'next/font/google';
-import { ThemeProvider } from '@/components/ui/theme-provider';
+import { ThemeProvider } from '@/context/theme-provider';
 import { auth } from '@/auth'; // Import auth to get session
-import { OrganizationContextProvider } from '@/context/OrganizationContext';
 
 import '../globals.css';
 import Footer from '@/components/layout/footer';
@@ -41,12 +40,12 @@ export default async function RootLayout({
       >
         <SessionProvider refetchInterval={0} refetchOnWindowFocus={false} session={session}>
           <ThemeProvider defaultTheme="system" storageKey="theme">
-            <OrganizationContextProvider>
-              <BlurDecoratives />
-              <Header />
-              <main className="flex-1 z-10  max-h-full flex flex-col">{children}</main>
-              <Footer />
-            </OrganizationContextProvider>
+            {/* <OrganizationContextProvider> */}
+            <BlurDecoratives />
+            <Header />
+            <main className="flex-1 z-10  max-h-full flex flex-col">{children}</main>
+            <Footer />
+            {/* </OrganizationContextProvider> */}
           </ThemeProvider>
         </SessionProvider>
       </body>

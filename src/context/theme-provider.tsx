@@ -1,7 +1,5 @@
 'use client';
 
-import { useOrganization } from '@/context/OrganizationContext';
-import { clientLogger } from '@/utils/logger';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 // Extended list of supported themes

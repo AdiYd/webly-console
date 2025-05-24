@@ -5,9 +5,7 @@ import { useChat } from '@ai-sdk/react';
 import { Icon } from '@iconify/react';
 import { useSession } from 'next-auth/react';
 // Fix the import to use the named export
-import { useOrganization } from '@/context/OrganizationContext';
 import { clientLogger } from '@/utils/logger';
-import { StreamedMessage } from './streamedMessage';
 import '@/globals.css';
 
 // File handling constants
@@ -69,9 +67,6 @@ export default function ChatInterface({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Context and session data
-  const { provider, model, icon, temperature, organizationPrompt, agents, currentOrganization } =
-    useOrganization();
   const { data: session } = useSession();
 
   // User information
@@ -90,15 +85,9 @@ export default function ChatInterface({
     api: '/api/ai/chat',
     initialMessages: initialMessages,
     body: {
-      provider,
-      model,
-      temperature,
-      systemPrompt: organizationPrompt || '',
-      agents,
-      attachments: pendingAttachments,
-      projectId, // Pass projectId if available
-      sessionId, // Pass sessionId if available
-      organizationId: currentOrganization?.id, // Pass organization ID
+      provider: 'openai',
+      model: 'gpt-4o',
+      temperature: 0.7,
     },
     onResponse: async response => {
       // Clear pending attachments after a successful response
@@ -421,9 +410,6 @@ export default function ChatInterface({
     <div className="flex flex-col pt-12 items-center justify-center text-base-content/60">
       <Icon icon="carbon:chat" className="w-16 h-16 mb-4" />
       <p className="text-lg font-medium">Start a conversation with the AI</p>
-      <p className="text-sm">
-        Using {model} from {provider}. You can also attach files.
-      </p>
     </div>
   );
 
@@ -513,11 +499,6 @@ export default function ChatInterface({
                   key={message.id || `msg-${index}`}
                 >
                   {/* Pass the extracted string content */}
-                  <StreamedMessage
-                    key={message.id || `streamed-${index}`}
-                    role={validRole} // Pass the validated role
-                    content={messageContent || ''} // Ensure content is always a string, even if empty
-                  />
                 </div>
               );
             })}

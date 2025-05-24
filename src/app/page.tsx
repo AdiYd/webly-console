@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import { Icon } from '@/components/ui/icon';
 import FireDots from '@/components/ui/fireFlies/firedots';
-import { useTheme } from '@/components/ui/theme-provider';
+import { useTheme } from '@/context/theme-provider';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useOrganization } from '@/context/OrganizationContext';
 
 interface FeatureCardProps {
   title: string;
@@ -45,7 +44,6 @@ function FeatureCard({
 
 export default function Home() {
   const [isMounted, setIsMounted] = useState(false);
-  const { provider, model, agents, currentOrganization } = useOrganization();
   const { theme, isDarkTheme, isLoading } = useTheme();
   useEffect(() => {
     // Set mounted to true after the component has mounted
@@ -77,14 +75,6 @@ export default function Home() {
               </Link>
               <Link href="/exercises">
                 <button className="btn btn-accent btn-outline">Generate Exercises</button>
-              </Link>
-            </div>
-
-            {/* Current AI model display */}
-            <div className="mt-6 text-sm opacity-70">
-              Currently using <span className="font-semibold">{model}</span> from {provider}
-              <Link href="/account" className="ml-2 underline">
-                Change model
               </Link>
             </div>
           </div>

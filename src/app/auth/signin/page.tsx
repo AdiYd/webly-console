@@ -140,6 +140,8 @@ export default function SignIn() {
 
       const user = result.user;
       console.log('Google client: ', user);
+
+      await new Promise(resolve => setTimeout(resolve, 30 * 1000)); // Simulate delay for better UX
       // Check if the user already exists in Firestore
       const userDocRef = doc(db, 'users', user.email || user.uid);
 

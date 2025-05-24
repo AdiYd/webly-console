@@ -1,5 +1,5 @@
 'use client';
-import { useTheme } from '../ui/theme-provider';
+import { useTheme } from '../../context/theme-provider';
 
 const BlurDecoratives = () => {
   const { theme, isDarkTheme } = useTheme(); // Get the current theme from the context
