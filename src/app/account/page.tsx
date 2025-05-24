@@ -1229,19 +1229,19 @@ export default function ProfilePage() {
         {savedStatus === 'saved' && (
           <div className="toast toast-top toast-center z-50">
             <div role="alert" className="alert alert-success shadow-lg">
-              <Icon icon="mdi:check-circle-outline" className="h-6 w-6" />
+              <Icon icon="mdi:check-circle-outline relative -bottom-0.5" width={20} />
               <span>Changes saved!</span>
             </div>
           </div>
         )}
-        {savedStatus === 'error' && (
+        {/* {savedStatus === 'error' && (
           <div className="toast toast-top toast-center z-50">
             <div role="alert" className="alert alert-error relative -bottom-10 shadow-lg">
               <Icon icon="mdi:alert-circle-outline" className="h-6 w-6 relative -bottom-1" />
               <span>Failed</span>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Sidebar (Recent Projects, Account Actions) */}
         <div>
@@ -1327,7 +1327,7 @@ export default function ProfilePage() {
                       >
                         <h3 className="font-medium text-sm">{project.name}</h3>
                         <div className="text-xs text-base-content/70 flex justify-between mt-1">
-                          <span>{new Date(project.updatedAt).toLocaleDateString()}</span>
+                          <span>{new Date(project.updatedAt as string).toLocaleDateString()}</span>
                           <span>
                             {project.description
                               ? `${project.description.substring(0, 30)}...`

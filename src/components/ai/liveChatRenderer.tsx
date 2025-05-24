@@ -194,7 +194,7 @@ export function LiveChatRenderer({ stream }: LiveChatRendererProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4 }}
-                className="p-4 bg-base-200 rounded-lg"
+                className="p-4 bg-base-200* rounded-lg"
               >
                 <ComponentRenderer
                   jsxString={chunk.content.jsxString}

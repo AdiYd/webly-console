@@ -6,6 +6,7 @@ import { ComponentRenderer } from './componentRenderer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { useSession } from 'next-auth/react';
+// Fix the import to use the named export
 import { useOrganization } from '@/context/OrganizationContext';
 import { clientLogger } from '@/utils/logger';
 
@@ -190,7 +191,7 @@ export function StreamedMessage({ content, role }: StreamedMessageProps) {
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
-                  className="p-4 bg-base-200 rounded-lg my-3 shadow"
+                  className="p-4 bg-base-200* rounded-lg my-3 shadow*"
                 >
                   <ComponentRenderer
                     jsxString={chunk.content.jsxString}

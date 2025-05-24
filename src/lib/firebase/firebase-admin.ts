@@ -14,30 +14,51 @@ interface AdminFirebase {
   auth: Auth;
   storage: Storage;
   app: App;
+  isInitialized: boolean;
 }
 
 let adminInstance: AdminFirebase | null = null;
 
-function initializeAdmin(): AdminFirebase {
+// Error handler for when Firebase Admin is not initialized
+const errorHandler = (method: string) => () => {
+  serverLogger.error(
+    'Firebase Admin',
+    `Method '${method}' called but Firebase Admin is not initialized`
+  );
+  throw new Error(`Firebase Admin is not initialized. Cannot call '${method}'`);
+};
+
+export function getAdminFirebase(): AdminFirebase {
   if (adminInstance) {
+    serverLogger.info('Firebase Admin', 'Returning existing initialized instance');
     return adminInstance;
   }
 
   serverLogger.info('Firebase Admin', 'Initializing...');
-  const apps = getApps();
-  if (apps.length > 0) {
-    serverLogger.info('Firebase Admin', 'Using existing app.');
-    const existingApp = apps[0]; // Assuming the first app is the admin app if already initialized
-    adminInstance = {
-      app: existingApp,
-      db: getFirestore(existingApp),
-      auth: getAuth(existingApp),
-      storage: getStorage(existingApp),
-    };
-    return adminInstance;
-  }
 
   try {
+    // Check for existing apps first
+    const apps = getApps();
+    if (apps.length > 0) {
+      serverLogger.info('Firebase Admin', 'Using existing app.');
+      const existingApp = apps[0];
+      adminInstance = {
+        app: existingApp,
+        db: getFirestore(existingApp),
+        auth: getAuth(existingApp),
+        storage: getStorage(existingApp),
+        isInitialized: true,
+      };
+
+      // Configure Firestore settings
+      const firestoreSettings = {
+        ignoreUndefinedProperties: true,
+      };
+      getFirestore(existingApp).settings(firestoreSettings);
+
+      return adminInstance;
+    }
+
     // Check for the Base64 encoded credentials
     if (!process.env.FIREBASE_ADMIN_SDK_BASE64) {
       throw new Error('Missing Firebase Admin credentials in environment variables');
@@ -57,42 +78,30 @@ function initializeAdmin(): AdminFirebase {
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
 
+    // Get service instances
+    const db = getFirestore(newApp);
+    const auth = getAuth(newApp);
+    const storage = getStorage(newApp);
+
+    // Configure Firestore settings
+    db.settings({
+      ignoreUndefinedProperties: true,
+    });
+
     serverLogger.info('Firebase Admin', 'Initialized successfully.');
+
+    // Create and return the instance
     adminInstance = {
       app: newApp,
-      db: getFirestore(newApp),
-      auth: getAuth(newApp),
-      storage: getStorage(newApp),
+      db,
+      auth,
+      storage,
+      isInitialized: true,
     };
+
     return adminInstance;
   } catch (error) {
-    serverLogger.error('Firebase Admin', 'Initialization failed:', error);
-    // Provide a detailed error message but don't crash the application
-    throw new Error(
-      `Firebase Admin initialization failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-  }
-}
-
-// Wrapped in a try-catch to prevent application crashes
-export function getAdminFirebase(): AdminFirebase {
-  try {
-    return initializeAdmin();
-  } catch (error) {
-    serverLogger.error('Firebase Admin', 'Could not initialize:', error);
-    // Return a mock object that logs errors when methods are called
-    // This allows the application to continue running even if Firebase Admin isn't properly initialized
-    const errorHandler =
-      (method: string) =>
-      (...args: any[]) => {
-        serverLogger.error(
-          'Firebase Admin',
-          `Method '${method}' called but Firebase Admin is not initialized`
-        );
-        throw new Error(`Firebase Admin is not initialized. Cannot call '${method}'`);
-      };
+    serverLogger.error('Firebase Admin', 'Failed to initialize:', error);
 
     const mockFirestore = {
       collection: errorHandler('collection'),
@@ -102,11 +111,13 @@ export function getAdminFirebase(): AdminFirebase {
       listCollections: errorHandler('listCollections'),
     } as unknown as Firestore;
 
+    // Return a mock instance with error handlers that will throw when used
     return {
       app: {} as App,
       db: mockFirestore,
       auth: {} as Auth,
       storage: {} as Storage,
+      isInitialized: false,
     };
   }
 }

@@ -137,6 +137,9 @@ export async function POST(req: NextRequest) {
       maxTokens,
       agents,
       attachments, // Extract attachments from the request body
+      projectId, // Extract projectId from the request body
+      organizationId, // Extract organizationId from the request body
+      sessionId, // Extract sessionId from the request body
     } = body;
 
     serverLogger.info('ChatAPI', 'Received request', {
@@ -145,6 +148,8 @@ export async function POST(req: NextRequest) {
       systemPrompt,
       messageCount: messages?.length,
       hasattachments: !!attachments?.length,
+      projectId, // Log projectId
+      sessionId, // Log sessionId
     });
 
     if (!messages || !Array.isArray(messages)) {
@@ -331,6 +336,45 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Handle project data if projectId is provided
+    let projectData = null;
+    if (projectId) {
+      try {
+        const { getProject } = await import('@/lib/projects');
+        projectData = await getProject(projectId);
+
+        if (projectData) {
+          serverLogger.info('ChatAPI', 'Retrieved project data', {
+            projectName: projectData.name,
+            messageCount: projectData.messages?.length || 0,
+          });
+
+          // If this appears to be a new conversation and the project has messages,
+          // incorporate the project history
+          if (messages.length <= 1 && projectData?.messages && projectData.messages.length > 0) {
+            const projectMessages = projectData.messages.map(msg => ({
+              role: msg.role || 'user',
+              content: msg.content || '',
+            }));
+
+            serverLogger.info('ChatAPI', 'Adding project history to conversation', {
+              historyCount: projectMessages.length,
+            });
+
+            // Add project history before the current message
+            messagesWithAttachments = [...projectMessages, ...messagesWithAttachments];
+          }
+        } else {
+          serverLogger.warn('ChatAPI', 'Project not found', { projectId });
+        }
+      } catch (error) {
+        serverLogger.error('ChatAPI', 'Error retrieving project data', {
+          projectId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
     // Process messages to handle attachments
     const processedMessages = messagesWithAttachments.map(message => {
       // Skip messages without attachments
@@ -460,6 +504,14 @@ export async function POST(req: NextRequest) {
             }
             return count;
           }, 0);
+
+          // Log image count information
+          if (imagePartCount > 0) {
+            serverLogger.info('ChatAPI', 'Sending images to vision-capable model', {
+              imageCount: imagePartCount,
+              model,
+            });
+          }
         }
 
         // Debug log to show the exact messages being sent to the AI
@@ -544,6 +596,52 @@ export async function POST(req: NextRequest) {
       if (!streamResponse) {
         throw new Error('Failed to generate stream response');
       }
+
+      // If we have a projectId, update the project with new messages
+      if (projectId) {
+        // Run this asynchronously without blocking the response
+        (async () => {
+          try {
+            const { updateProject } = await import('@/lib/projects');
+
+            // Format messages for saving in the project
+            const messagesToSave = processedMessages.map(msg => ({
+              id: crypto.randomUUID(), // Add required id property
+              role: msg.role,
+              content:
+                typeof msg.content === 'string'
+                  ? msg.content
+                  : Array.isArray(msg.content)
+                  ? msg.content
+                      .filter((part: any) => part.type === 'text')
+                      .map((part: any) => part.text)
+                      .join('\n')
+                  : JSON.stringify(msg.content),
+              timestamp: new Date().toISOString(),
+              metadata: {}, // Add required metadata property
+            }));
+
+            // Update the project with new messages
+            await updateProject(organizationId, projectId, {
+              messages: messagesToSave,
+              lastMessageAt: new Date().toISOString(),
+              // Update message count in the project metadata
+              messageCount: messagesToSave.length,
+            });
+
+            serverLogger.info('ChatAPI', 'Updated project with new messages', {
+              projectId,
+              messageCount: messagesToSave.length,
+            });
+          } catch (error) {
+            serverLogger.error('ChatAPI', 'Failed to update project with messages', {
+              projectId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+        })();
+      }
+
       return streamResponse;
     } catch (error) {
       serverLogger.error('ChatAPI', 'Error generating stream response', error);

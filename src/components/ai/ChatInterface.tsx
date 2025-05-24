@@ -4,6 +4,7 @@ import { useState, FormEvent, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { Icon } from '@iconify/react';
 import { useSession } from 'next-auth/react';
+// Fix the import to use the named export
 import { useOrganization } from '@/context/OrganizationContext';
 import { clientLogger } from '@/utils/logger';
 import { StreamedMessage } from './streamedMessage';
@@ -22,6 +23,8 @@ const ALLOWED_FILE_TYPES = [...ALLOWED_IMAGE_TYPES];
 interface ChatInterfaceProps {
   initialMessages?: any[];
   isMinimized?: boolean;
+  projectId?: string; // Added projectId prop
+  sessionId?: string; // Added sessionId prop
 }
 
 // Attachment interface - must match server expectations
@@ -50,6 +53,8 @@ const exampleChat = [
 export default function ChatInterface({
   initialMessages = exampleChat,
   isMinimized = false,
+  projectId,
+  sessionId,
 }: ChatInterfaceProps) {
   // UI state management
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +70,8 @@ export default function ChatInterface({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Context and session data
-  const { provider, model, icon, temperature, organizationPrompt, agents } = useOrganization();
+  const { provider, model, icon, temperature, organizationPrompt, agents, currentOrganization } =
+    useOrganization();
   const { data: session } = useSession();
 
   // User information
@@ -90,6 +96,9 @@ export default function ChatInterface({
       systemPrompt: organizationPrompt || '',
       agents,
       attachments: pendingAttachments,
+      projectId, // Pass projectId if available
+      sessionId, // Pass sessionId if available
+      organizationId: currentOrganization?.id, // Pass organization ID
     },
     onResponse: async response => {
       // Clear pending attachments after a successful response
@@ -348,7 +357,6 @@ export default function ChatInterface({
         </div>
       </div>
     `;
-    document.body.appendChild(toastElement);
     setTimeout(() => toastElement.remove(), 3000);
   };
 

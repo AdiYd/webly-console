@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import parse, { domToReact } from 'html-react-parser';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '@iconify/react';
 import { clientLogger } from '@/utils/logger';
 
@@ -46,6 +46,9 @@ export function ComponentRenderer({ jsxString, logic, onSubmit }: ComponentRende
   const [formState, setFormState] = useState<Record<string, any>>(initialStates);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [componentType, setComponentType] = useState<'form' | 'card' | 'list' | 'standard'>(
+    'standard'
+  );
 
   // Prepare component when jsxString is ready
   useEffect(() => {
@@ -58,8 +61,28 @@ export function ComponentRenderer({ jsxString, logic, onSubmit }: ComponentRende
           cleanedJsx = jsxString.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '');
         }
 
-        // Mark component as ready for rendering
-        setIsReady(true);
+        // Try to determine component type for appropriate placeholder
+        if (
+          cleanedJsx.includes('<form') ||
+          (cleanedJsx.includes('input') &&
+            cleanedJsx.includes('button') &&
+            cleanedJsx.includes('submit')) ||
+          (logic?.actions && Object.values(logic.actions).some(a => a.actionType === 'submitForm'))
+        ) {
+          setComponentType('form');
+        } else if (cleanedJsx.includes('card')) {
+          setComponentType('card');
+        } else if (cleanedJsx.includes('list') || cleanedJsx.includes('table')) {
+          setComponentType('list');
+        }
+
+        // Add a slight delay to simulate loading and allow for transitions
+        // This ensures the loader is visible for at least 800ms for better UX
+        const timer = setTimeout(() => {
+          setIsReady(true);
+        }, 800);
+
+        return () => clearTimeout(timer);
       } catch (error) {
         clientLogger.error('ComponentRenderer: Error preparing JSX', 'data:', error);
         setParseError(
@@ -67,7 +90,7 @@ export function ComponentRenderer({ jsxString, logic, onSubmit }: ComponentRende
         );
       }
     }
-  }, [jsxString]);
+  }, [jsxString, logic]);
 
   // Debug log for initial state
   useEffect(() => {
@@ -140,14 +163,8 @@ export function ComponentRenderer({ jsxString, logic, onSubmit }: ComponentRende
   let parsedContent;
   try {
     if (!isReady) {
-      parsedContent = (
-        <div className="p-2 border border-base-300 rounded-lg animate-pulse">
-          <div className="flex items-center">
-            <Icon icon="carbon:code" className="mr-2 text-base-content/50" />
-            <span className="text-base-content/70">Preparing component...</span>
-          </div>
-        </div>
-      );
+      // We'll render loading skeletons outside this block using AnimatePresence
+      parsedContent = null;
     } else {
       parsedContent = parse(jsxString, {
         replace: (domNode: any) => {
@@ -258,14 +275,83 @@ export function ComponentRenderer({ jsxString, logic, onSubmit }: ComponentRende
     );
   }
 
+  // Render appropriate loading state or the component
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.97 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-      className="w-full"
-    >
-      {parsedContent}
-    </motion.div>
+    <AnimatePresence mode="wait">
+      {!isReady ? (
+        <motion.div
+          key="loading"
+          initial={{ opacity: 0.6 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-full"
+        >
+          {/* Different skeletal loaders based on component type */}
+          {componentType === 'form' ? (
+            <div className="card bg-base-100 shadow-sm p-4 overflow-hidden">
+              <div className="h-6 w-2/3 bg-base-200 rounded-md mb-4 animate-pulse"></div>
+              <div className="space-y-4">
+                <div className="h-10 bg-base-200 rounded-md animate-pulse"></div>
+                <div className="h-10 bg-base-200 rounded-md animate-pulse"></div>
+                <div className="h-10 w-1/3 bg-primary/30 rounded-md animate-pulse ml-auto"></div>
+              </div>
+              <div className="flex justify-center mt-6">
+                <div className="loading loading-ring loading-md text-primary"></div>
+              </div>
+            </div>
+          ) : componentType === 'card' ? (
+            <div className="card bg-base-100 shadow-sm p-4 overflow-hidden">
+              <div className="h-32 bg-base-200 rounded-md mb-4 animate-pulse"></div>
+              <div className="h-6 w-1/2 bg-base-200 rounded-md mb-3 animate-pulse"></div>
+              <div className="h-4 bg-base-200 rounded-md mb-2 animate-pulse"></div>
+              <div className="h-4 bg-base-200 rounded-md mb-2 animate-pulse"></div>
+              <div className="h-4 w-2/3 bg-base-200 rounded-md mb-4 animate-pulse"></div>
+              <div className="flex justify-center">
+                <div className="loading loading-ring loading-md text-primary"></div>
+              </div>
+            </div>
+          ) : componentType === 'list' ? (
+            <div className="card bg-base-100 shadow-sm p-4 overflow-hidden">
+              <div className="h-8 bg-base-200 rounded-md mb-4 animate-pulse"></div>
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-base-200 animate-pulse"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-base-200 rounded-md animate-pulse mb-1"></div>
+                      <div className="h-3 w-2/3 bg-base-200 rounded-md animate-pulse"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-center mt-4">
+                <div className="loading loading-ring loading-md text-primary"></div>
+              </div>
+            </div>
+          ) : (
+            <div className="card bg-base-100 shadow-sm p-4 overflow-hidden">
+              <div className="h-16 bg-base-200 rounded-md mb-4 animate-pulse"></div>
+              <div className="h-4 bg-base-200 rounded-md mb-2 animate-pulse"></div>
+              <div className="h-4 bg-base-200 rounded-md mb-2 animate-pulse"></div>
+              <div className="h-4 w-2/3 bg-base-200 rounded-md mb-4 animate-pulse"></div>
+              <div className="flex justify-center">
+                <div className="loading loading-ring loading-md text-primary"></div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      ) : (
+        <motion.div
+          key="content"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full"
+        >
+          {parsedContent}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

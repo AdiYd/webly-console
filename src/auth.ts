@@ -2,7 +2,7 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 // Updated imports to use the new file structure
 import { auth as clientAuth, db as clientDb } from '@/lib/firebase/firebase-client';
 interface User {
@@ -13,13 +13,12 @@ interface User {
   role?: string;
   id?: string;
 }
-  declare module 'next-auth' {
-    interface Session {
-      user: User;
-      maxAge: number;
-    }
+declare module 'next-auth' {
+  interface Session {
+    user: User;
+    maxAge: number;
   }
-
+}
 
 const demoUser: User = {
   id: 'demoUser',
@@ -161,6 +160,45 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.role = (user as User).role || 'Trial';
         token.name = (user as User).name || user.name;
 
+        try {
+          // Get or create user document in Firestore to track last_used context
+          const userRef = doc(clientDb, 'users', user.email as string);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            // User exists, get last_used context
+            const userData = userSnap.data();
+
+            if (userData.last_used) {
+              // Add last used context to token
+              token.last_used = userData.last_used;
+              authLog.info('Retrieved last used context', userData.last_used);
+            }
+
+            // Update user's lastLogin
+            await updateDoc(userRef, {
+              lastLogin: serverTimestamp(),
+            });
+          } else {
+            // Create new user document
+            authLog.info('Creating new user document in Firestore');
+
+            // Create initial user profile
+            await setDoc(userRef, {
+              email: user.email,
+              name: (user as User).name || user.name || 'User',
+              role: 'Trial',
+              created_at: serverTimestamp(),
+              lastLogin: serverTimestamp(),
+              last_used: {}, // Empty last_used object to be populated later
+            });
+
+            // We don't have last_used context yet for new users
+          }
+        } catch (error) {
+          authLog.error('Failed to manage user Firestore document', error);
+        }
+
         // Set session duration based on rememberMe flag
         if ((user as User).rememberMe === 'true' || (user as User).rememberMe === true) {
           token.maxAge = RememberMe_Period;
@@ -201,11 +239,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.image = (token.picture as string) || session.user.image || demoUser.image;
         session.maxAge = (token.maxAge as number) || Default_Period;
 
+        // Add last_used context to session
+        if (token.last_used) {
+          session.user.last_used = token.last_used;
+        }
+
         // Safely add expires date
         try {
           const expiryTimeMs = Date.now() + ((token.maxAge as number) || Default_Period) * 1000;
           session.expires = new Date(expiryTimeMs).toISOString();
-          // authLog.success('Session data prepared for client', session);
         } catch (error) {
           authLog.error('Failed to set session expiry', error);
           // Set a default expiry to avoid errors
@@ -213,7 +255,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       }
       session.status = 'authenticated';
-      // authLog.success('Session data:', session);
       return session;
     },
 
