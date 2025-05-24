@@ -759,7 +759,7 @@ export default function ChatLayoutWrapper({
                   !chatUI.display.isMinimized &&
                   !chatUI.display.isPinned && (
                     <div
-                      className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center hover:bg-base-300 rounded-bl z-20 bg-base-200/50"
+                      className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-se-resize flex items-center justify-center hover:bg-base-300* rounded-bl z-20 bg-base-200/50*"
                       onMouseDown={handleResizeMouseDown}
                       aria-label="Resize chat window"
                       title="Resize chat window"

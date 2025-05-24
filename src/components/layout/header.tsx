@@ -19,17 +19,11 @@ const Header = () => {
       const handleMouseOver = (e: MouseEvent) => {
         // console.log('Mouse moved', e.clientY);
         if (e.clientY <= 15) {
-          clientLogger.debug(
-            'header',
-            'Mouse is at the top of the page, showing header',
-            e.clientY
-          );
           setIsVisible(true);
           setTimeout(() => {
             setIsVisible(false);
           }, 10000);
-        } else if ((e.clientY > 180 && isVisible) || (e.clientY > 15 && !isVisible)) {
-          clientLogger.debug('header', 'Mouse moved away from the top, hiding header', e.clientY);
+        } else if (e.clientY > 180 && isVisible) {
           setIsVisible(false);
         }
       };

@@ -190,7 +190,27 @@ export default function ChatInterface({
       >
         <div className="chat-image avatar">
           <div className="w-10 rounded-full">
-            <img src={isUser ? userImage : 'https://i.pravatar.cc/150?img=0'} />
+            {isUser ? (
+              <img src={userImage} />
+            ) : (
+              <div className="bg-primary flex items-center justify-center h-full">
+                <div className="circle-bg" />
+              </div>
+              // <div
+              //   style={{ animationDuration: '10s' }}
+              //   id="animated-blur-radial-gradient"
+              //   className="w-10 h-10 rounded-full animate-spin"
+              // >
+              //   <div
+              //     style={{
+              //       animationDuration: '2s',
+              //       animationDirection: 'alternate-reverse',
+              //       animationDelay: '0s',
+              //     }}
+              //     className="w-10 h-10 rounded-full blur-[4px] bg-primary bg-gradient-to-r from-primary from-[10%] via-accent to-secondary animate-pulse* "
+              //   />
+              // </div>
+            )}
           </div>
         </div>
         <div className="chat-header">{isUser ? userName : 'AI Assistant'}</div>
