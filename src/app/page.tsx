@@ -63,17 +63,17 @@ export default function Home() {
         <div className="hero-content text-center">
           <div className="max-w-md md:max-w-3xl">
             <h1 className="text-4xl md:text-6xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent font-bold mb-6">
-              Your AI-Powered Learning Platform
+              Your AI-Powered Platform
             </h1>
             <p className="text-xl md:text-2xl mb-10 opacity-80">
-              Unlock the power of AI to enhance your learning, create personalized exercises, and
-              get instant answers to your questions.
+              Unlock the power of AI to enhance your development and creative learning. create
+              personalized assets, and get instant feedback on your work.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link href="/chat">
                 <button className="btn btn-primary">Start Chatting</button>
               </Link>
-              <Link href="/exercises">
+              <Link href="/chat">
                 <button className="btn btn-accent btn-outline">Generate Exercises</button>
               </Link>
             </div>
@@ -88,15 +88,15 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <FeatureCard
-              title="AI Chat Assistant"
-              description="Get instant answers to your questions with our advanced AI chat assistant. Powered by leading language models."
+              title="Website Generator"
+              description="Create stunning websites in minutes with our AI-powered website generator. Just provide your requirements, and let the AI do the rest."
               icon="proicons:chat"
               btnColor="btn-primary"
               href="/chat"
             />
             <FeatureCard
-              title="Coming Soon: Writing Assistant"
-              description="Get help with essays, reports, and creative writing with AI-powered suggestions and improvements."
+              title="Coming Soon: Math exercises generator"
+              description="Get help with math exercises with AI-powered suggestions and improvements."
               icon="md:document-text"
               btnColor="btn-accent"
               href="#"

@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/icon';
 import Link from 'next/link';
-import { signIn } from 'next-auth/react';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { db, auth } from '@/lib/firebase/firebase-client';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  emailPasswordAuth,
+  googleAuth,
+  completeNextAuthSignIn,
+  getAuthErrorMessage,
+} from '@/lib/auth/authUtils';
 import { motion } from 'framer-motion';
 
 export const fadeInVariants = {
@@ -29,17 +31,14 @@ export default function SignIn() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [dismissError, setDismissError] = useState(false);
 
   // Handle URL error parameters
   useEffect(() => {
     if (errorMessage) {
-      const errorDetails = {
-        error: errorMessage,
-        callbackUrl,
-        referrer: document.referrer,
-      };
+      console.error('Auth error detected:', errorMessage);
 
-      console.error('Auth error detected:', errorDetails);
       switch (errorMessage) {
         case 'OAuthAccountNotLinked':
           setError(
@@ -47,144 +46,86 @@ export default function SignIn() {
           );
           break;
         case 'AccessDenied':
-          setError(
-            'Access denied. You may not have permission to sign in or the request was denied.'
-          );
+          setError('Access denied. You may not have permission to sign in.');
           break;
         case 'Verification':
           setError('Email verification required. Please verify your email first.');
           break;
         case 'Configuration':
-          setError(
-            'There is a problem with the server authentication configuration. Please try again later.'
-          );
+          setError('There is a problem with the server authentication configuration.');
           break;
         case 'OAuthCallback':
-          setError('There was a problem with the Google sign-in process. Please try again.');
-          break;
         case 'OAuthSignin':
-          setError('Could not initiate Google sign-in. Please try again later.');
+          setError('There was a problem with the Google sign-in process. Please try again.');
           break;
         case 'GoogleSignInFailed':
           setError('Failed to sign in with Google. Your account may not be registered.');
           break;
         default:
-          setError(`Authentication error: ${errorMessage}. Please try again or contact support.`);
+          setError(`Authentication error: ${errorMessage}. Please try again.`);
       }
     }
-  }, [errorMessage, callbackUrl]);
-
-  // Updated handleSubmit function with improved error handling and UX
+  }, [errorMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setDismissError(false);
+    setSuccessMessage('');
     setIsLoading(true);
 
-    // Verify email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-        // redirectTo: '/',
+      // Authenticate with Firebase
+      const userCredential = await emailPasswordAuth(
+        formData.email,
+        formData.password,
+        false // isSignUp = false
+      );
+
+      // Complete authentication with NextAuth
+      await completeNextAuthSignIn(userCredential, {
         rememberMe: formData.rememberMe,
-        callbackUrl: callbackUrl || '/',
+        callbackUrl,
+        provider: 'credentials',
       });
-      console.log('Sign-in result:', result);
 
-      if (result?.error) {
-        setError(
-          result.error === 'CredentialsSignin'
-            ? 'Invalid email or password'
-            : `Authentication error: ${result.error}`
-        );
-        setIsLoading(false);
-        return;
-      }
+      setSuccessMessage('Sign in successful');
 
-      if (result?.ok) {
-        router.push(callbackUrl || '/');
-      } else {
-        setIsLoading(false);
-      }
-
-      return result;
-    } catch (err) {
-      console.error('Error during sign-in:', err);
+      // Router redirect will happen after NextAuth redirect
+    } catch (error: any) {
+      const errorCode = error.code || 'default';
+      setError(getAuthErrorMessage(errorCode));
+      console.error('Sign-in error:', error);
+    } finally {
       setIsLoading(false);
-      setError('An error occurred during sign-in. Please try again.');
-      throw err;
     }
   };
 
-  // Update Google sign-in to use nextAuthSignIn
   const handleGoogleSignIn = async () => {
     setError('');
+    setDismissError(false);
+    setSuccessMessage('');
     setIsLoading(true);
 
     try {
-      if (!db || !auth) {
-        throw new Error('Somwething went wrong. Please try again later.');
-      }
+      // Authenticate with Google through Firebase
+      const userCredential = await googleAuth();
 
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-
-      const user = result.user;
-      console.log('Google client: ', user);
-
-      await new Promise(resolve => setTimeout(resolve, 30 * 1000)); // Simulate delay for better UX
-      // Check if the user already exists in Firestore
-      const userDocRef = doc(db, 'users', user.email || user.uid);
-
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists()) {
-        await setDoc(doc(db, 'users', user.email || user.uid), {
-          name: user.displayName,
-          email: user.email,
-          role: 'Trial',
-          image: user.photoURL,
-          createdAt: new Date().toISOString(),
-          provider: 'google',
-        });
-      }
-      // Get the Firebase ID token
-      const idToken = await user.getIdToken();
-
-      // Sign in to NextAuth using the credentials provider with the ID token
-      console.log('Attempting NextAuth sign-in with Firebase ID token');
-      const signInResponse = await signIn('credentials', {
-        idToken: idToken,
-        providerType: 'google',
-        id: user.uid,
-        name: user.displayName,
-        email: user.email,
-        role: 'Trial',
-        image: user.photoURL,
-        callbackUrl: '/',
+      // Complete authentication with NextAuth
+      await completeNextAuthSignIn(userCredential, {
+        provider: 'google',
+        callbackUrl,
       });
-      setIsLoading(false);
+
+      setSuccessMessage('Sign in with Google successful');
+
+      // Router redirect will happen after NextAuth redirect
     } catch (error: any) {
+      const errorCode = error.code || 'default';
+      setError(getAuthErrorMessage(errorCode));
+      console.error('Google sign-in error:', error);
+    } finally {
       setIsLoading(false);
-      console.error('Google Sign-Up/Sign-In process failed', error);
-      // Handle Firebase errors (e.g., popup closed, network error)
-      if (error.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in cancelled. Please try again.');
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-        setError(
-          'An account already exists with this email using a different sign-in method (e.g., password). Please sign in using that method.'
-        );
-      } else {
-        setError(`Google sign-in failed: ${error.message || 'Unknown error'}`);
-      }
     }
   };
 
@@ -211,14 +152,46 @@ export default function SignIn() {
           </p>
         </div>
 
-        {error && (
-          <div className="alert alert-error">
-            <Icon icon="mdi:close-circle" className="h-5 w-5" />
+        {error && !dismissError && (
+          <div className="alert alert-error !mt-2">
+            <Icon
+              icon="mdi:close-circle"
+              className="h-5 w-5 cursor-pointer"
+              onClick={() => setDismissError(true)}
+            />
             <span>{error}</span>
           </div>
         )}
 
-        <form suppressHydrationWarning onSubmit={handleSubmit} className="mt-8 space-y-6">
+        {successMessage && (
+          <div className="alert alert-success !mt-2">
+            <Icon icon="mdi:check-circle" className="h-5 w-5" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <button
+            type="button"
+            className="btn btn-outline w-full flex items-center justify-center gap-2"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+          >
+            <Icon icon="flat-color-icons:google" width="20" height="20" />
+            <span>Sign in with Google</span>
+          </button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-base-content/20"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-base-100 px-2 text-base-content/70">Or continue with</span>
+            </div>
+          </div>
+        </div>
+
+        <form suppressHydrationWarning onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4 rounded-md">
             <div>
               <label htmlFor="email" className="block text-sm font-medium">
@@ -269,43 +242,25 @@ export default function SignIn() {
               </label>
             </div>
             <div className="text-sm">
-              <Link href="#" className="font-medium text-primary hover:underline">
+              <Link
+                href="/auth/forgot-password"
+                className="font-medium text-primary hover:underline"
+              >
                 Forgot your password?
               </Link>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <button type="submit" className="w-full btn btn-primary" disabled={isLoading}>
-              {isLoading ? (
-                <span className="loading loading-spinner loading-sm"></span>
-              ) : (
-                <>
-                  <Icon icon="mdi:login" />
-                  <span>Sign in</span>
-                </>
-              )}
-            </button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-base-content"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-base-100 px-2 text-base-content/70">Or continue with</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-outline w-full flex items-center justify-center space-x-2"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-            >
-              <Icon icon="flat-color-icons:google" width="20" height="20" />
-              <span>Sign in with Google</span>
-            </button>
-          </div>
+          <button type="submit" className="w-full btn btn-primary" disabled={isLoading}>
+            {isLoading ? (
+              <span className="loading loading-spinner loading-sm"></span>
+            ) : (
+              <>
+                <Icon icon="mdi:login" />
+                <span>Sign in</span>
+              </>
+            )}
+          </button>
         </form>
       </div>
     </motion.div>

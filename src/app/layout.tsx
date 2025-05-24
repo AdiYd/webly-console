@@ -9,7 +9,6 @@ import Header from '@/components/layout/header';
 import BlurDecoratives from '@/components/layout/blurDecoratives';
 import { SessionProvider } from 'next-auth/react';
 import { clientLogger } from '@/utils/logger';
-import { doc } from 'firebase/firestore';
 
 const robotoSans = Roboto({
   subsets: ['latin'],
@@ -35,8 +34,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`font-sans* ${robotoSans.className}* ${inter.className}*  relative max-w-full overflow-x-hidden min-h-screen max-h-screen flex flex-col
-          `}
+        className={`relative max-w-full overflow-x-hidden min-h-screen max-h-screen flex flex-col`}
       >
         <SessionProvider refetchInterval={0} refetchOnWindowFocus={false} session={session}>
           <ThemeProvider defaultTheme="system" storageKey="theme">

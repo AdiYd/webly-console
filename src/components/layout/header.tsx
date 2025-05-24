@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigation } from '@/components/ui/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
+import { clientLogger } from '@/utils/logger';
 
 const Header = () => {
   const [isVisible, setIsVisible] = useState<Boolean>(true);
@@ -18,8 +19,17 @@ const Header = () => {
       const handleMouseOver = (e: MouseEvent) => {
         // console.log('Mouse moved', e.clientY);
         if (e.clientY <= 15) {
+          clientLogger.debug(
+            'header',
+            'Mouse is at the top of the page, showing header',
+            e.clientY
+          );
           setIsVisible(true);
-        } else if ((e.clientY > 250 && isVisible) || (e.clientY > 15 && !isVisible)) {
+          setTimeout(() => {
+            setIsVisible(false);
+          }, 10000);
+        } else if ((e.clientY > 180 && isVisible) || (e.clientY > 15 && !isVisible)) {
+          clientLogger.debug('header', 'Mouse moved away from the top, hiding header', e.clientY);
           setIsVisible(false);
         }
       };

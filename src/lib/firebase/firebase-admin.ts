@@ -42,6 +42,8 @@ export function getAdminFirebase(): AdminFirebase {
     if (apps.length > 0) {
       serverLogger.info('Firebase Admin', 'Using existing app.');
       const existingApp = apps[0];
+
+      // Simply get services from existing app without configuring settings again
       adminInstance = {
         app: existingApp,
         db: getFirestore(existingApp),
@@ -50,12 +52,7 @@ export function getAdminFirebase(): AdminFirebase {
         isInitialized: true,
       };
 
-      // Configure Firestore settings
-      const firestoreSettings = {
-        ignoreUndefinedProperties: true,
-      };
-      getFirestore(existingApp).settings(firestoreSettings);
-
+      // Don't attempt to set settings again on an existing Firestore instance
       return adminInstance;
     }
 
@@ -78,15 +75,18 @@ export function getAdminFirebase(): AdminFirebase {
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
 
-    // Get service instances
+    // Get the database first so we can configure it
     const db = getFirestore(newApp);
-    const auth = getAuth(newApp);
-    const storage = getStorage(newApp);
 
-    // Configure Firestore settings
+    // Configure Firestore settings only on newly created instance
+    // This must happen before any Firestore operations
     db.settings({
       ignoreUndefinedProperties: true,
     });
+
+    // Then get other services
+    const auth = getAuth(newApp);
+    const storage = getStorage(newApp);
 
     serverLogger.info('Firebase Admin', 'Initialized successfully.');
 

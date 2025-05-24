@@ -15,38 +15,7 @@ interface NavLinkProps {
   className?: string;
 }
 
-const sessionExample = {
-  status: 'authenticated',
-  data: {
-    user: {
-      name: 'John Doe',
-      email: 'demo@example.com',
-      role: 'Trial',
-      image: 'https://i.pravatar.cc/150?img=3',
-      rememberMe: false,
-    },
-  },
-};
 
-// Placeholder organization data and functions (replace with actual context implementation)
-const placeholderOrganizations = [
-  { id: 'org1', name: 'Acme Corp' },
-  { id: 'org2', name: 'Beta Inc' },
-  { id: 'org3', name: 'Gamma LLC' },
-];
-const usePlaceholderOrganization = () => {
-  const [current, setCurrent] = useState(placeholderOrganizations[0]);
-  return {
-    currentOrganization: current,
-    organizations: placeholderOrganizations,
-    switchOrganization: (id: string) => {
-      const newOrg = placeholderOrganizations.find(org => org.id === id);
-      if (newOrg) setCurrent(newOrg);
-      console.log(`Switched to organization: ${newOrg?.name}`);
-    },
-  };
-};
-// End Placeholder
 
 function NavLink({ href, children, className }: NavLinkProps) {
   const pathname = usePathname();
@@ -95,7 +64,6 @@ export function Navigation() {
 
   let authElement = null;
   let avatar = null;
-  let organizationSwitcher = null; // Initialize switcher element
 
   if (session.status === 'authenticated') {
     // --- Authenticated Logic ---
@@ -285,7 +253,7 @@ export function Navigation() {
                 <Link href="/">Home</Link>
               </li>
               <li className="mt-1">
-                <Link href="/chat">AI Agent</Link>
+                <Link href="/chat">Chat</Link>
               </li>
             </ul>
           )}
@@ -295,7 +263,7 @@ export function Navigation() {
             <NavLink href="/">Home</NavLink>
           </li>
           <li>
-            <NavLink href="/chat">AI Agent</NavLink>
+            <NavLink href="/chat">Chat</NavLink>
           </li>
         </ul>
       </div>

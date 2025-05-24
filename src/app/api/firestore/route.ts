@@ -2,7 +2,7 @@ import { ToolInvocation, streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { serverLogger } from '@/utils/logger';
-import { firestoreTools } from '@/lib/tools/firestore-tools-minimized';
+import { firestoreTools } from '@/lib/tools/firestore-tools';
 import { getAdminFirebase } from '@/lib/firebase/firebase-admin';
 import { agentsTools } from '@/lib/tools/agents-tools';
 

@@ -1,19 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/ui/icon';
 import Link from 'next/link';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { setDoc, doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase/firebase-client';
+import {
+  emailPasswordAuth,
+  googleAuth,
+  completeNextAuthSignIn,
+  getAuthErrorMessage,
+} from '@/lib/auth/authUtils';
 import { fadeInVariants } from '../signin/page';
 import { motion } from 'framer-motion';
 
 export default function SignUp() {
   const searchParams = useSearchParams();
   const errorMessage = searchParams.get('error');
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -25,37 +28,11 @@ export default function SignUp() {
   const [dismissError, setDismissError] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Handle URL error parameters with enhanced Google-specific errors
+  // Handle URL error parameters
   useEffect(() => {
     if (errorMessage) {
       console.error('Auth error detected on signup page:', errorMessage);
-      switch (errorMessage) {
-        case 'OAuthAccountNotLinked':
-          setError(
-            'This email is already associated with another sign-in method. Please use the original method you signed up with.'
-          );
-          break;
-        case 'Configuration':
-          setError('There is a problem with the server authentication configuration.');
-          break;
-        case 'OAuthCallback':
-          setError('There was a problem with Google sign-in. Please try again.');
-          break;
-        case 'GoogleSignUpFailed':
-          setError('Failed to sign up with Google. Please try again or use email signup.');
-          break;
-        case 'EmailAlreadyExists':
-          setError('An account with this email already exists. Please sign in instead.');
-          break;
-        case 'auth/weak-password':
-          setError('The password is too weak. Please choose a stronger password.');
-          break;
-        case 'auth/invalid-email':
-          setError('The email address is not valid. Please enter a valid email.');
-          break;
-        default:
-          setError(`Authentication error: ${errorMessage}. Please try again.`);
-      }
+      setError(getAuthErrorMessage(errorMessage));
     }
   }, [errorMessage]);
 
@@ -70,119 +47,57 @@ export default function SignUp() {
       setError('Passwords do not match');
       return;
     }
-    // Verify email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
 
     setIsLoading(true);
 
     try {
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
-      const user = userCredential.user;
-
-      // Store additional user data in Firestore
-      await setDoc(doc(db, 'users', user.email || user.uid), {
-        name,
-        email,
-        role: 'Trial',
-        image: '',
-        createdAt: new Date().toISOString(),
-        provider: 'credentials',
-      });
-
-      setSuccessMessage('Account created successfully! You can now sign in.');
-      setIsLoading(false);
-
-      // Signing in the user automatically after signup
-      await signIn('credentials', {
+      // Create user with Firebase Auth
+      const userCredential = await emailPasswordAuth(
         email,
         password,
-        redirect: true,
-        redirectTo: '/',
-        rememberMe: false,
-        callbackUrl: '/',
+        true, // isSignUp = true
+        { name, provider: 'credentials' }
+      );
+
+      // Complete authentication with NextAuth
+      await completeNextAuthSignIn(userCredential, {
+        callbackUrl,
+        name,
       });
-    } catch (error) {
-      setIsLoading(false);
-      if (error instanceof Error) {
-        // Handle specific Firebase errors
-        if (error.message.includes('auth/email-already-in-use')) {
-          setError('An account with this email already exists. Please sign in instead.');
-        } else if (error.message.includes('auth/weak-password')) {
-          setError('The password is too weak. Please choose a stronger password.');
-        } else {
-          setError(`Error creating account: ${error.message}`);
-        }
-      } else {
-        setError('An unknown error occurred. Please try again.');
-      }
+
+      setSuccessMessage('Account created successfully! Redirecting...');
+    } catch (error: any) {
+      const errorCode = error.code || 'default';
+      setError(getAuthErrorMessage(errorCode));
       console.error('Signup error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleSignUp = async () => {
     setError('');
+    setDismissError(false);
+    setSuccessMessage('');
     setIsLoading(true);
 
     try {
-      if (!db || !auth) {
-        throw new Error('Somwething went wrong. Please try again later.');
-      }
+      // Authenticate with Google through Firebase
+      const userCredential = await googleAuth();
 
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      console.log('Google client: ', user);
-      // Check if the user already exists in Firestore
-      const userDocRef = doc(db, 'users', user.email || user.uid);
-      // await new Promise(resolve => setTimeout(resolve, 800)); // Simulate a delay
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists()) {
-        console.log('Creating new user document in Firestore', user);
-        await setDoc(doc(db, 'users', user.email || user.uid), {
-          name: user.displayName,
-          email: user.email,
-          role: 'Trial',
-          image: user.photoURL,
-          createdAt: new Date().toISOString(),
-          provider: 'google',
-        });
-      }
-      setSuccessMessage('Account created successfully! You can now sign in.');
-      // Get the Firebase ID token
-      const idToken = await user.getIdToken();
-
-      // Sign in to NextAuth using the credentials provider with the ID token
-      console.log('Attempting NextAuth sign-in with Firebase ID token');
-      await signIn('credentials', {
-        idToken: idToken,
-        providerType: 'google',
-        id: user.uid,
-        name: user.displayName,
-        email: user.email,
-        role: 'Trial',
-        image: user.photoURL,
-        callbackUrl: '/',
+      // Complete authentication with NextAuth
+      await completeNextAuthSignIn(userCredential, {
+        provider: 'google',
+        callbackUrl,
       });
-      setIsLoading(false);
+
+      setSuccessMessage('Account created with Google successfully! Redirecting...');
     } catch (error: any) {
+      const errorCode = error.code || 'default';
+      setError(getAuthErrorMessage(errorCode));
+      console.error('Google sign-up error:', error);
+    } finally {
       setIsLoading(false);
-      console.error('Google Sign-Up/Sign-In process failed', error);
-      // Handle Firebase errors (e.g., popup closed, network error)
-      if (error.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in cancelled. Please try again.');
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-        setError(
-          'An account already exists with this email using a different sign-in method (e.g., password). Please sign in using that method.'
-        );
-      } else {
-        setError(`Google sign-in failed: ${error.message || 'Unknown error'}`);
-      }
     }
   };
 
@@ -231,7 +146,7 @@ export default function SignUp() {
         </div>
 
         {error && !dismissError && (
-          <div className="alert alert-error">
+          <div className="alert alert-error !mt-2">
             <Icon
               onClick={() => setDismissError(true)}
               icon="mdi:close-circle"
@@ -248,10 +163,7 @@ export default function SignUp() {
           </div>
         )}
 
-        {/* Debug info hidden */}
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {/* ...existing code... */}
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4 rounded-md">
             <div>
               <label htmlFor="name" className="block text-sm font-medium">
