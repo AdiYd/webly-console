@@ -252,7 +252,7 @@ export function Navigation() {
   }
 
   return (
-    <div className="navbar min-h-14 bg-base-100/20 backdrop-blur-lg px-4 border-transparent border-b-zinc-500/30 border-[0.8px] relative z-10">
+    <div className="navbar min-h-14  bg-base-100/20 backdrop-blur-lg px-8 max-sm:px-4 border-transparent border-b-zinc-500/30 border-[0.8px] relative z-10">
       <div className="navbar-start">
         <div className="dropdown">
           <div
@@ -290,16 +290,7 @@ export function Navigation() {
             </ul>
           )}
         </div>
-        {/* <Link href="/" className="text-lg px-2">
-          Webly AI
-        </Link> */}
-        {/* Organization Switcher (Desktop Only) - Only rendered client-side */}
-        <div className="hidden lg:flex items-center">
-          {isClientReady && session.status === 'authenticated' && organizationSwitcher}
-        </div>
-      </div>
-      <div className="navbar-center hidden lg:flex">
-        <ul className="flex px-1 gap-4">
+        <ul className="hidden lg:flex px-1 gap-4">
           <li>
             <NavLink href="/">Home</NavLink>
           </li>
@@ -308,6 +299,7 @@ export function Navigation() {
           </li>
         </ul>
       </div>
+      <div className="navbar-center "></div>
       {authElement}
     </div>
   );

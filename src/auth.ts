@@ -1,6 +1,5 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import Google from 'next-auth/providers/google';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 // Updated imports to use the new file structure
@@ -9,7 +8,7 @@ interface User {
   name: string;
   email: string;
   image: string;
-  rememberMe: string | boolean;
+  rememberMe: boolean;
   role?: string;
   id?: string;
 }
@@ -25,7 +24,7 @@ const demoUser: User = {
   name: 'John Doe',
   email: 'demo@example.com',
   image: 'https://i.pravatar.cc/150?img=3',
-  rememberMe: false, // Changed from 'false' (string) to false (boolean)
+  rememberMe: false,
   role: 'Trial',
 };
 
@@ -58,11 +57,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // Connect Credentials provider with Firebase Auth
     Credentials({
       authorize: async (credentials: any) => {
-        authLog.info('Processing Firebase credentials authorization', {
-          email: credentials.email,
-          credentials,
-        });
-
         try {
           if (credentials.providerType === 'google' && credentials.idToken) {
             authLog.info('Processing Google ID token authorization');
@@ -106,7 +100,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 name: userDoc.data().name || firebaseUser.displayName || '',
                 image: userDoc.data().image || demoUser.image,
                 role: userDoc.data().role || 'Trial',
-                rememberMe: credentials.rememberMe,
+                rememberMe: credentials.rememberMe || false,
               };
             }
           }
@@ -130,9 +124,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   // Session configuration
   session: {
-    // Use JWT strategy for sessions (stored in cookies, not database)
     strategy: 'jwt',
-    // Default session max age - will be modified by JWT callback based on rememberMe
     maxAge: Default_Period,
   },
 
@@ -140,8 +132,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     // JWT callback - customize the token when created or updated
     async jwt({ token, user, account, trigger }) {
-      // authLog.info('Processing JWT', { trigger, user, token });
-
       // First time token is created (sign in)
       if (user) {
         authLog.success('Setting JWT user data', { email: user.email });
@@ -191,7 +181,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         // Set session duration based on rememberMe flag
-        if ((user as User).rememberMe === 'true' || (user as User).rememberMe === true) {
+        if ((user as User).rememberMe === true) {
           token.maxAge = RememberMe_Period;
           authLog.info('Extended session created (30 days)');
         } else {

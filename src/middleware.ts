@@ -5,7 +5,6 @@ import { auth } from '@/auth';
 const protectedRoutes = [
   '/dashboard',
   '/settings',
-  '/profile',
   '/account',
   '/projects',
   '/organizations',
@@ -13,7 +12,7 @@ const protectedRoutes = [
 ];
 
 // Define routes that are only for unauthenticated users
-const authOnlyRoutes = ['/auth/signin', '/auth/signup', '/auth/forgot-password'];
+const unProtectedRoutes = ['/auth/signin', '/auth/signup', '/auth/forgot-password'];
 
 export async function middleware(request: NextResponse) {
   const session = await auth();
@@ -32,7 +31,7 @@ export async function middleware(request: NextResponse) {
   // If user is authenticated and tries to access an auth-only page
   if (
     isAuthenticated &&
-    authOnlyRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+    unProtectedRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
   ) {
     // Check if there's a redirect parameter
     const redirectParam = url.searchParams.get('redirect');
@@ -65,18 +64,3 @@ export async function middleware(request: NextResponse) {
   // Allow the request to proceed if no redirection is needed
   return NextResponse.next();
 }
-
-// Configure the matcher to run middleware only on specific paths
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder files
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.svg$).*)',
-  ],
-};

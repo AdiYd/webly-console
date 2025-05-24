@@ -28,6 +28,8 @@ const Header = () => {
       return () => {
         window.removeEventListener('mousemove', handleMouseOver);
       };
+    } else {
+      setIsVisible(true);
     }
   }, [pathName]);
 

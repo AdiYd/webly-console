@@ -375,9 +375,7 @@ export default function ChatPage() {
         <div className="w-3 h-3 rounded-full bg-red-500* btn min-h-2 btn-xs btn-primary btn-circle"></div>
         <div className="w-3 h-3 rounded-full bg-yellow-500* btn min-h-2 btn-xs btn-secondary btn-circle"></div>
         <div className="w-3 h-3 rounded-full bg-green-500* btn min-h-2 btn-xs btn-accent btn-circle"></div>
-        {chatUI.display.isFullscreen && (
-          <span className="text-sm ml-4 font-medium">Webly AI Organization</span>
-        )}
+        {chatUI.display.isFullscreen && <span className="text-sm ml-4 font-medium">Webly AI</span>}
       </div>
 
       {/* Resize icons */}
