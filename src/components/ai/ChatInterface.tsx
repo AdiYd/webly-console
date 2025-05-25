@@ -27,6 +27,10 @@ export default function ChatInterface({ initialMessages = exampleChat, isMinimiz
   // UI state management
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<'openai' | 'anthropic'>('openai');
+  const [inputHistory, setInputHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [tempInput, setTempInput] = useState<string>('');
+
   // References
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -45,6 +49,7 @@ export default function ChatInterface({ initialMessages = exampleChat, isMinimiz
     handleSubmit: handleChatSubmit,
     status,
     error: chatError,
+    setInput,
   } = useChat({
     api: '/api/ai/chat',
     initialMessages: initialMessages,
@@ -52,25 +57,76 @@ export default function ChatInterface({ initialMessages = exampleChat, isMinimiz
       provider,
       temperature: 0.7,
     },
-    onResponse(response) {
-      console.log('Response received:', response);
-      // Add more detailed response logging
-    },
-    onFinish(message, options) {
-      // Handle message finish event
-      console.log('Message finished:', message, options);
-    },
-    onError(error) {
-      console.error('Chat error details:', {
-        message: error.message,
-        stack: error.stack,
-        provider,
-      });
-    },
   });
 
   // Track loading state
   const isLoading = status === 'submitted' || status === 'streaming';
+
+  useEffect(() => {
+    // Event handler for history navigation
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if textarea is focused
+      if (document.activeElement !== textareaRef.current) return;
+
+      if (
+        (e.key === 'ArrowUp' && e.ctrlKey) ||
+        (e.key === 'ArrowUp' &&
+          textareaRef.current === document.activeElement &&
+          (input === '' || inputHistory.includes(input)))
+      ) {
+        e.preventDefault();
+        navigateHistory('up');
+      } else if (
+        (e.key === 'ArrowDown' && e.ctrlKey) ||
+        (e.key === 'ArrowDown' &&
+          textareaRef.current === document.activeElement &&
+          (input === '' || inputHistory.includes(input)))
+      ) {
+        e.preventDefault();
+        navigateHistory('down');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [inputHistory, historyIndex, input]);
+
+  /**
+   * Navigate through input history
+   */
+  const navigateHistory = (direction: 'up' | 'down') => {
+    if (inputHistory.length === 0) return;
+    if (direction === 'up') {
+      if (historyIndex === -1) {
+        // Starting history navigation, save current input
+        setTempInput(input);
+        const newIndex = inputHistory.length - 1;
+        setHistoryIndex(newIndex);
+        setInput(inputHistory[newIndex]);
+      } else if (historyIndex > 0) {
+        // Navigate to previous item
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setInput(inputHistory[newIndex]);
+      }
+    } else if (direction === 'down') {
+      if (historyIndex === -1) return; // No history navigation active
+
+      if (historyIndex < inputHistory.length - 1) {
+        // Navigate to next item
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setInput(inputHistory[newIndex]);
+      } else {
+        // Return to current input
+        setHistoryIndex(-1);
+        setInput(tempInput);
+      }
+    }
+  };
+
   // Effect: Focus on input when ready
   useEffect(() => {
     if (['ready', 'error'].includes(status) && textareaRef.current) {
@@ -103,6 +159,23 @@ export default function ChatInterface({ initialMessages = exampleChat, isMinimiz
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+
+    // Add to history only if it's different from the last entry and not empty
+    if (
+      input.trim() &&
+      (inputHistory.length === 0 || inputHistory[inputHistory.length - 1] !== input.trim())
+    ) {
+      setInputHistory(prev => {
+        const newHistory = [...prev, input.trim()];
+        // Keep only last 8 entries
+        return newHistory.slice(-8);
+      });
+    }
+
+    // Reset history navigation state
+    setHistoryIndex(-1);
+    setTempInput('');
+
     handleChatSubmit(e);
   };
 
@@ -221,7 +294,7 @@ export default function ChatInterface({ initialMessages = exampleChat, isMinimiz
         </div>
         <div className="chat-header">{isUser ? userName : 'AI Assistant'}</div>
         <div className={`chat-bubble ${isUser ? 'chat-bubble-primary' : ''}`}>
-          {/* {formatMessageContent(content)} */}
+          {formatMessageContent(content)}
         </div>
       </div>
     );
@@ -237,9 +310,7 @@ export default function ChatInterface({ initialMessages = exampleChat, isMinimiz
       >
         {messages.length === 0
           ? renderEmptyState()
-          : messages.map((message, index) => (
-              <h2 key={index}>{JSON.stringify(message.content)}</h2>
-            ))}
+          : messages.map((message, index) => renderMessage(message, index))}
 
         {error && !isLoading && (
           <div className="alert alert-error w-fit ml-12 shadow-lg mt-2">
@@ -269,7 +340,7 @@ export default function ChatInterface({ initialMessages = exampleChat, isMinimiz
               ref={textareaRef}
               value={input}
               onChange={handleInputChange}
-              placeholder="Type your message here..."
+              placeholder="Type your message here... (Ctrl+↑/↓ for history)"
               className="w-full resize-none bg-transparent focus:outline-none mr-2 overflow-y-auto"
               maxLength={2000}
               disabled={isLoading}
@@ -294,9 +365,16 @@ export default function ChatInterface({ initialMessages = exampleChat, isMinimiz
           </div>
 
           <div className="flex justify-between items-center px-3 pb-1 border-base-300">
-            <span className="text-xs text-base-content/60">
-              {2000 - input.length} characters remaining
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-base-content/60">
+                {2000 - input.length} characters remaining
+              </span>
+              {inputHistory.length > 0 && (
+                <span className="text-xs text-base-content/40">
+                  • {inputHistory.length}/8 history
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1 space-x-2">
               <div
                 onClick={() => setProvider('openai')}

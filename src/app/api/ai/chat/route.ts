@@ -107,19 +107,16 @@ export async function POST(req: NextRequest) {
 
     // Use streamText for different providers
     let modelProvider;
-    let streamConfig: any = {
-      messages: messages as Message[],
-      system: finalPrompt || '',
-      temperature,
-      // tools: commonTools,
-      maxRetries: 3,
-      maxSteps: 8,
-    };
 
-    // Add maxTokens only if provided
-    if (maxTokens) {
-      streamConfig.maxTokens = maxTokens;
-    }
+    // console.log(' *************  Starting text stream... ************* ');
+    // const { textStream } = streamText({
+    //   model: anthropic('claude-3-5-sonnet-latest'),
+    //   prompt: 'Write a poem about embedding models.',
+    // });
+    // for await (const textPart of textStream) {
+    //   console.log(textPart);
+    // }
+    // console.log(' *************  Text stream completed. ************* ');
 
     switch (provider) {
       case 'openai':
@@ -161,16 +158,15 @@ export async function POST(req: NextRequest) {
     try {
       const result = streamText({
         model: modelProvider,
-        ...streamConfig,
+        messages,
+        ...(provider !== 'anthropic' && { system: finalPrompt }),
+        ...(maxTokens && { maxTokens }),
+        temperature,
+        maxRetries: 3,
+        maxSteps: 10,
       });
 
-      const streamResponse = result.toDataStreamResponse({
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
-        },
-      });
+      const streamResponse = result.toDataStreamResponse();
 
       if (!streamResponse) {
         throw new Error('Failed to generate stream response');
