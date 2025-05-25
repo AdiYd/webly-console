@@ -15,12 +15,13 @@ const Header = () => {
   useEffect((): any => {
     if (pathName.includes('chat')) {
       setIsVisible(false);
-
+      let timeoutRef: NodeJS.Timeout;
       const handleMouseOver = (e: MouseEvent) => {
         // console.log('Mouse moved', e.clientY);
         if (e.clientY <= 15) {
           setIsVisible(true);
-          setTimeout(() => {
+          clearTimeout(timeoutRef);
+          timeoutRef = setTimeout(() => {
             setIsVisible(false);
           }, 10000);
         } else if (e.clientY > 180 && isVisible) {
@@ -31,6 +32,8 @@ const Header = () => {
 
       return () => {
         window.removeEventListener('mousemove', handleMouseOver);
+        clearTimeout(timeoutRef);
+        setIsVisible(true);
       };
     } else {
       setIsVisible(true);
