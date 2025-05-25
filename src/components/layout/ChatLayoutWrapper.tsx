@@ -780,7 +780,7 @@ export default function ChatLayoutWrapper({
             className="flex-1 h-full overflow-auto px-0.5 py-1 backdrop-blur-sm"
             style={chatUI.display.isFullscreen || isMobile ? { display: 'none' } : {}}
           >
-            <div className="card rounded-md h-full bg-base-100* z-20">
+            <div className="card rounded-md h-full bg-base-100* z-20 overflow-auto">
               <div className="h-full">{mainContent}</div>
             </div>
           </div>

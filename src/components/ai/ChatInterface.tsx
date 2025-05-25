@@ -6,6 +6,7 @@ import { Icon } from '@iconify/react';
 import { useSession } from 'next-auth/react';
 import '@/globals.css';
 import { AnimatePresence, motion } from 'framer-motion';
+import useBoolean from '@/hooks/use-boolean';
 
 // Type definitions
 interface ChatInterfaceProps {
@@ -720,7 +721,7 @@ export default function ChatInterface({
 const validateHtml = (html: string): boolean => {
   // 1. Basic length and content check
   if (!html || html.trim().length === 0) {
-    console.warn('Validation failed: HTML string is empty or whitespace only.');
+    // console.warn('Validation failed: HTML string is empty or whitespace only.');
     return false;
   }
 
@@ -743,9 +744,9 @@ const validateHtml = (html: string): boolean => {
   const hasDoctype = /<!DOCTYPE html>/i.test(html.trim().substring(0, 100)); // Check at the beginning
 
   if (!hasDoctype) {
-    console.warn(
-      'Validation warning: Missing <!DOCTYPE html> declaration. Consider adding for best practice.'
-    );
+    // console.warn(
+    //   'Validation warning: Missing <!DOCTYPE html> declaration. Consider adding for best practice.'
+    // );
     // return false; // You might make this a warning, not a hard fail, depending on your strictness
   }
 
@@ -758,9 +759,9 @@ const validateHtml = (html: string): boolean => {
     /on(click|load|error|submit|mouseover|key|focus|blur|change)\s*=/i.test(html);
 
   if (hasScriptTags || hasEventAttributes) {
-    console.warn(
-      'Validation warning: Potential unsafe content (script tags or event attributes) detected. Consider sanitization.'
-    );
+    // console.warn(
+    //   'Validation warning: Potential unsafe content (script tags or event attributes) detected. Consider sanitization.'
+    // );
     // return false; // You might return false here for strict security, or sanitize it.
   }
 
@@ -790,12 +791,12 @@ const validateHtml = (html: string): boolean => {
     // - Check for specific required elements inside head/body
     // - Ensure no broken image links if crucial (though this is more content validation)
   } catch (e) {
-    console.error('Validation failed: Error during DOM parsing.', e);
+    // console.error('Validation failed: Error during DOM parsing.', e);
     return false;
   }
 
   // If all checks pass
-  console.log('Validation passed: HTML seems appropriate for iframe rendering.');
+  // console.log('Validation passed: HTML seems appropriate for iframe rendering.');
   return true;
 };
 
@@ -804,7 +805,7 @@ const validateHtml = (html: string): boolean => {
  */
 const FormatMessageContent = ({
   content,
-  isExpanded,
+  isExpanded = false,
   setIsExpanded,
 }: {
   content: string;
@@ -814,6 +815,34 @@ const FormatMessageContent = ({
   if (!content) return null;
   const [isCopied, setIsCopied] = useState(false);
   const [showHtmlPreview, setShowHtmlPreview] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const update = useBoolean(false);
+
+  // Effect to listen for messages from the iframe (form submissions)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Check if the message is a form submission or website submission
+      if (
+        event.data &&
+        (event.data.type === 'formSubmission' || event.data.type === 'websiteSubmission')
+      ) {
+        console.log(`${event.data.type} received:`, event.data.payload);
+        // You could add additional handling here, like showing a notification
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('message', handleMessage);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  useEffect(() => {
+    update.toggle();
+  }, [showHtmlPreview, isExpanded]);
 
   // Split the message by common code block markers
   const parts = content.split(/(```[\s\S]*?```|`[\s\S]*?`)/g);
@@ -830,7 +859,7 @@ const FormatMessageContent = ({
       return (
         <pre
           key={i}
-          className="text-neutral-content card !bg-zinc-800 p-3 overflow-x-auto text-sm my-2 w-fit*"
+          className="!text-gray-100 card !bg-zinc-800 p-3 overflow-x-auto text-sm my-2 w-fit*"
         >
           <div className="text-xs items-center flex justify-between mb-1">
             {language && (
@@ -896,10 +925,12 @@ const FormatMessageContent = ({
             {isValidHtml && showHtmlPreview ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <iframe
+                  ref={iframeRef}
                   srcDoc={codeContent}
                   className="w-full border-0 rounded-lg transition-[height]"
                   style={{ minHeight: isExpanded ? '80vh' : '350px' }}
                   title="HTML Preview"
+                  sandbox="allow-forms allow-scripts allow-same-origin"
                 />
               </motion.div>
             ) : (
@@ -915,6 +946,18 @@ const FormatMessageContent = ({
         <code key={i} className="text-neutral-content card !bg-zinc-800 px-1 rounded w-fit">
           {part.substring(1, part.length - 1)}
         </code>
+      );
+    }
+
+    // Check if this a start of a new code block or snippet and show loader
+    else if (part.startsWith('```') || part.startsWith('`')) {
+      // This is a code block or inline code, but not a complete one
+      return (
+        <div className="p-4 flex items-center justify-center h-[calc(100vh-8rem)]">
+          <div className="card p-2 shadow-lg">
+            <span className="loading loading-spinner loading-lg"></span>
+          </div>
+        </div>
       );
     }
     // Regular text content
