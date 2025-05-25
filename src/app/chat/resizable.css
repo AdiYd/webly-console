@@ -1,4 +1,4 @@
-/* Styles for the resizable handle */
+/* Styles for the resizable handle
 .react-resizable {
   position: relative;
 }
@@ -26,11 +26,11 @@
 }
 
 /* Style for drag handle */
-.drag-handle {
+/* .drag-handle {
   user-select: none;
-}
+} */
 
 /* Add some transition for smoother visual effects */
-.card {
+/* .card {
   transition: box-shadow 0.2s ease, transform 0.1s ease;
-}
+}  */

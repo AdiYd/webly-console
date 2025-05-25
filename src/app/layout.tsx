@@ -33,6 +33,31 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const theme = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('theme='))
+                    ?.split('=')[1];
+                  
+                  if (theme) {
+                    document.documentElement.setAttribute('data-theme', theme);
+                  } else {
+                    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'autumn');
+                  }
+                } catch (e) {
+                  console.error('Failed to set initial theme', e);
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`relative max-w-full overflow-x-hidden min-h-screen max-h-screen flex flex-col`}
       >

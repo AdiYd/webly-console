@@ -13,7 +13,6 @@ const initiateAdminFireBase = getAdminFirebase();
 const loggedFirestoreTools = Object.entries(firestoreTools).reduce((acc, [key, tool]) => {
   const originalExecute = tool.execute;
 
-  // Create a wrapper that logs before and after execution and ensures a result is always returned
   const loggedExecute = async (args: any) => {
     serverLogger.info('Firestore Tool Invocation', `Tool "${key}" called`, {
       tool: key,
@@ -21,8 +20,6 @@ const loggedFirestoreTools = Object.entries(firestoreTools).reduce((acc, [key, t
     });
 
     try {
-      // Parameter normalization for common errors:
-      // If tool is manageDocuments with operation add/update, and data is missing but value is provided
       if (
         key === 'manageDocuments' &&
         (args.operation === 'add' || args.operation === 'update') &&
@@ -37,13 +34,10 @@ const loggedFirestoreTools = Object.entries(firestoreTools).reduce((acc, [key, t
           collection: args.collection,
         });
 
-        // Make a copy to avoid modifying the original args object
         args = { ...args, data: args.value };
       }
 
       const result = await originalExecute(args);
-
-      // Ensure we always have a string result
       const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
 
       serverLogger.info('Firestore Tool Response', `Tool "${key}" completed`, {
@@ -53,7 +47,6 @@ const loggedFirestoreTools = Object.entries(firestoreTools).reduce((acc, [key, t
 
       return resultStr;
     } catch (error) {
-      // Capture errors and return as response rather than throwing
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       serverLogger.error('Firestore Tool Error', `Tool "${key}" failed but error was captured`, {
@@ -62,12 +55,10 @@ const loggedFirestoreTools = Object.entries(firestoreTools).reduce((acc, [key, t
         arguments: args,
       });
 
-      // Return the error as a formatted string that the AI can read
       return `Error executing ${key}: ${errorMessage}\n\nPlease check your parameters and try again.`;
     }
   };
 
-  // Return the tool with the logged execute function
   return {
     ...acc,
     [key]: {
@@ -76,22 +67,6 @@ const loggedFirestoreTools = Object.entries(firestoreTools).reduce((acc, [key, t
     },
   };
 }, {} as typeof firestoreTools);
-
-// API key validation helper
-const getApiKey = (provider: string): string => {
-  switch (provider) {
-    case 'openai':
-      return process.env.OPENAI_API_KEY || '';
-    case 'anthropic':
-      return process.env.ANTHROPIC_API_KEY || '';
-    case 'gemini': // Use 'gemini' consistently
-      return process.env.GOOGLE_API_KEY || '';
-    case 'grok': // Grok might need a specific SDK or custom handling
-      return process.env.GROK_API_KEY || '';
-    default:
-      throw new Error(`No API key found for provider: ${provider}`);
-  }
-};
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -111,18 +86,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const {
-      messages,
-      model = 'gpt-4o',
-      provider = 'openai',
-      temperature = 0.7,
-      systemPrompt = '',
-      maxTokens,
-    } = body;
+    const { messages, provider = 'openai', temperature = 0.7, systemPrompt = '', maxTokens } = body;
 
     serverLogger.info('ChatAPI', 'Received request', {
       provider,
-      model,
       systemPrompt,
       messageCount: messages?.length,
     });
@@ -135,55 +102,50 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const finalPrompt = `
-    ${systemPrompt}
-    `;
-
-    // Create commonTools with only defined tools
-    const commonTools = {
-      ...loggedFirestoreTools,
-    };
+    const finalPrompt = `${systemPrompt}`;
+    const commonTools = { ...loggedFirestoreTools };
 
     // Use streamText for different providers
     let modelProvider;
+    let streamConfig: any = {
+      messages: messages as Message[],
+      system: finalPrompt || '',
+      temperature,
+      // tools: commonTools,
+      maxRetries: 3,
+      maxSteps: 8,
+    };
+
+    // Add maxTokens only if provided
+    if (maxTokens) {
+      streamConfig.maxTokens = maxTokens;
+    }
+
     switch (provider) {
       case 'openai':
-        serverLogger.info('ChatAPI', 'Using OpenAI provider', {
-          model,
-          imageSupport: ['gpt-4-vision', 'gpt-4o'].includes(model) ? 'Yes' : 'No',
-        });
-        modelProvider = openai(model);
+        modelProvider = openai('gpt-4o');
+        serverLogger.info('ChatAPI', 'Using OpenAI provider', { model: 'gpt-4o' });
         break;
 
       case 'anthropic':
+        modelProvider = anthropic('claude-3-5-sonnet-20241022');
         serverLogger.info('ChatAPI', 'Using Anthropic provider', {
           model: 'claude-3-5-sonnet-20241022',
         });
-        modelProvider = anthropic('claude-3-5-sonnet-20241022');
         break;
 
       case 'gemini':
         serverLogger.error('ChatAPI', 'Gemini integration not implemented');
         return new Response(
-          JSON.stringify({
-            error: 'Gemini integration using AI SDK tools not yet supported',
-          }),
-          {
-            status: 501,
-            headers: { 'Content-Type': 'application/json' },
-          }
+          JSON.stringify({ error: 'Gemini integration using AI SDK tools not yet supported' }),
+          { status: 501, headers: { 'Content-Type': 'application/json' } }
         );
 
       case 'grok':
         serverLogger.error('ChatAPI', 'Grok integration not implemented');
         return new Response(
-          JSON.stringify({
-            error: 'Grok integration using AI SDK tools not yet supported',
-          }),
-          {
-            status: 501,
-            headers: { 'Content-Type': 'application/json' },
-          }
+          JSON.stringify({ error: 'Grok integration using AI SDK tools not yet supported' }),
+          { status: 501, headers: { 'Content-Type': 'application/json' } }
         );
 
       default:
@@ -194,30 +156,39 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    // Return the stream response
     serverLogger.info('ChatAPI', 'Streaming response back to client');
+
     try {
       const result = streamText({
         model: modelProvider,
-        messages: messages as Message[],
-        system: finalPrompt || '',
-        temperature,
-        ...(maxTokens ? { maxTokens } : {}),
-        tools: commonTools,
-        maxRetries: 3,
-        maxSteps: 8,
+        ...streamConfig,
       });
-      const streamResponse = result.toDataStreamResponse();
+
+      const streamResponse = result.toDataStreamResponse({
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
+
       if (!streamResponse) {
         throw new Error('Failed to generate stream response');
       }
 
       return streamResponse;
-    } catch (error) {
-      serverLogger.error('ChatAPI', 'Error generating stream response', error);
+    } catch (streamError) {
+      serverLogger.error('ChatAPI', 'Stream generation error', {
+        provider,
+        error: streamError,
+        errorMessage: streamError instanceof Error ? streamError.message : String(streamError),
+      });
+
       return new Response(
         JSON.stringify({
-          error: error instanceof Error ? error.message : 'Failed to generate stream response',
+          error: `Streaming error with ${provider}: ${
+            streamError instanceof Error ? streamError.message : 'Unknown streaming error'
+          }`,
         }),
         {
           status: 500,
@@ -226,7 +197,11 @@ export async function POST(req: NextRequest) {
       );
     }
   } catch (error) {
-    serverLogger.error('ChatAPI', 'Error in chat endpoint', error);
+    serverLogger.error('ChatAPI', 'General error in chat endpoint', {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error occurred',

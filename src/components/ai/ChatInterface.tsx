@@ -23,15 +23,10 @@ const exampleChat = [
   },
 ];
 
-export default function ChatInterface({
-  initialMessages = exampleChat,
-  isMinimized = false,
-  projectId,
-  sessionId,
-}: ChatInterfaceProps) {
+export default function ChatInterface({ initialMessages = exampleChat, isMinimized = false }: ChatInterfaceProps) {
   // UI state management
   const [error, setError] = useState<string | null>(null);
-
+  const [provider, setProvider] = useState<'openai' | 'anthropic'>('openai');
   // References
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -54,12 +49,23 @@ export default function ChatInterface({
     api: '/api/ai/chat',
     initialMessages: initialMessages,
     body: {
-      provider: 'openai',
-      model: 'gpt-4o',
+      provider,
       temperature: 0.7,
     },
-    onError: async error => {
-      console.error('Chat error:', error);
+    onResponse(response) {
+      console.log('Response received:', response);
+      // Add more detailed response logging
+    },
+    onFinish(message, options) {
+      // Handle message finish event
+      console.log('Message finished:', message, options);
+    },
+    onError(error) {
+      console.error('Chat error details:', {
+        message: error.message,
+        stack: error.stack,
+        provider,
+      });
     },
   });
 
@@ -215,7 +221,7 @@ export default function ChatInterface({
         </div>
         <div className="chat-header">{isUser ? userName : 'AI Assistant'}</div>
         <div className={`chat-bubble ${isUser ? 'chat-bubble-primary' : ''}`}>
-          {formatMessageContent(content)}
+          {/* {formatMessageContent(content)} */}
         </div>
       </div>
     );
@@ -231,7 +237,9 @@ export default function ChatInterface({
       >
         {messages.length === 0
           ? renderEmptyState()
-          : messages.map((message, index) => renderMessage(message, index))}
+          : messages.map((message, index) => (
+              <h2 key={index}>{JSON.stringify(message.content)}</h2>
+            ))}
 
         {error && !isLoading && (
           <div className="alert alert-error w-fit ml-12 shadow-lg mt-2">
@@ -285,10 +293,30 @@ export default function ChatInterface({
             </button>
           </div>
 
-          <div className="flex items-center px-3 pb-1 border-base-300">
+          <div className="flex justify-between items-center px-3 pb-1 border-base-300">
             <span className="text-xs text-base-content/60">
               {2000 - input.length} characters remaining
             </span>
+            <div className="flex items-center gap-1 space-x-2">
+              <div
+                onClick={() => setProvider('openai')}
+                title="Openai"
+                className={`cursor-pointer hover:bg-zinc-400/40 rounded-md p-[2px] ${
+                  provider === 'openai' ? 'bg-primary/20' : ''
+                }`}
+              >
+                <Icon className="" icon="ri:openai-fill" width="1em" height="1em" />
+              </div>
+              <div
+                onClick={() => setProvider('anthropic')}
+                title="Anthropic"
+                className={`cursor-pointer hover:bg-zinc-400/40 rounded-md p-[2px] ${
+                  provider === 'anthropic' ? 'bg-primary/20' : ''
+                }`}
+              >
+                <Icon className="" icon="bi:anthropic" width="1em" height="1em" />
+              </div>
+            </div>
           </div>
         </div>
       </form>

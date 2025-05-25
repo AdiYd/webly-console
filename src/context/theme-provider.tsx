@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-
+import Cookies from 'js-cookie';
 // Extended list of supported themes
 export type Theme =
   | 'light'
@@ -80,10 +80,17 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(defaultTheme);
   const [isDarkTheme, setIsDarkTheme] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Initialize theme from cookies or localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+    const savedTheme = Cookies.get(storageKey) as Theme | undefined;
+
+    const localTheme = localStorage.getItem(storageKey) as Theme | null;
     if (savedTheme) {
       setTheme(savedTheme);
+    } else if (localTheme) {
+      setTheme(localTheme);
+      Cookies.set(storageKey, localTheme, { expires: 365 });
     }
     setIsLoading(false);
   }, [storageKey]);
@@ -108,9 +115,10 @@ export function ThemeProvider({
   const value = useMemo(
     () => ({
       theme,
-      setTheme: (theme: Theme) => {
-        localStorage.setItem(storageKey, theme);
-        setTheme(theme);
+      setTheme: (newTheme: Theme) => {
+        Cookies.set(storageKey, newTheme, { expires: 365 });
+        localStorage.setItem(storageKey, newTheme);
+        setTheme(newTheme);
       },
       isLoading,
       isDarkTheme,

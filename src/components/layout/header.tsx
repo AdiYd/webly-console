@@ -23,9 +23,12 @@ const Header = () => {
           clearTimeout(timeoutRef);
           timeoutRef = setTimeout(() => {
             setIsVisible(false);
-          }, 10000);
+          }, 8000); // Hide after 8 seconds of inactivity
         } else if (e.clientY > 180 && isVisible) {
-          setIsVisible(false);
+          clearTimeout(timeoutRef);
+          timeoutRef = setTimeout(() => {
+            setIsVisible(false);
+          }, 3000); // Hide after 3 seconds of inactivity
         }
       };
       window.addEventListener('mousemove', handleMouseOver);
