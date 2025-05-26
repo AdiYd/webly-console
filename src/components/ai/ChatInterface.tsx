@@ -7,6 +7,8 @@ import { useSession } from 'next-auth/react';
 import '@/globals.css';
 import { AnimatePresence, motion } from 'framer-motion';
 import useBoolean from '@/hooks/use-boolean';
+import { clientLogger } from '@/utils/logger';
+import { getRandomTheme, useTheme } from '@/context/theme-provider';
 
 // Type definitions
 interface ChatInterfaceProps {
@@ -14,6 +16,12 @@ interface ChatInterfaceProps {
   isMinimized?: boolean;
   projectId?: string;
   sessionId?: string;
+}
+
+declare global {
+  interface Window {
+    MathJax: any;
+  }
 }
 
 const htmlExample = `
@@ -148,9 +156,9 @@ const htmlExample = `
 </html>
 `;
 
-const htmlFormExample = `
+const uiDocumentWrapper = (uiElement: string, theme = 'autumn') => `
   <!DOCTYPE html>
-<html lang="en" data-theme="emerald">
+<html lang="en" data-theme="${theme}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -158,153 +166,40 @@ const htmlFormExample = `
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js" charset="utf-8"></script>     <!-- MathJax CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+      // MathJax configuration (optional)
+      window.MathJax = {
+        tex: {
+          inlineMath: [['\\\\(', '\\\\)']],
+          displayMath: [['\\\\(', '\\\\)']],
+          processEscapes: true
+        },
+        options: {
+          skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+      };
+    </script>
+    
     <style>
-        /* Custom styles for the Inter font */
         body {
             font-family: 'Inter', sans-serif;
+            background-color: transparent;
+        }
+        ui {
+            display: block;
+            margin: 0;
+            padding: 0;
         }
     </style>
 </head>
 <body class="bg-base-200 text-base-content min-h-screen flex flex-col">
 
-    <div class="navbar bg-base-100 shadow-lg rounded-b-xl px-4 py-3">
-        <div class="flex-1">
-            <a class="btn btn-ghost text-xl font-bold text-primary" href="#">
-                My Awesome App
-            </a>
-        </div>
-        <div class="flex-none">
-            <ul class="menu menu-horizontal px-1">
-                <li><a class="font-medium rounded-lg hover:bg-primary hover:text-primary-content transition-colors duration-200">Home</a></li>
-                <li><a class="font-medium rounded-lg hover:bg-primary hover:text-primary-content transition-colors duration-200">Features</a></li>
-                <li><a class="font-medium rounded-lg hover:bg-primary hover:text-primary-content transition-colors duration-200">About</a></li>
-                <li><a class="font-medium rounded-lg hover:bg-primary hover:text-primary-content transition-colors duration-200">Contact</a></li>
-            </ul>
-        </div>
-    </div>
-
-    <main class="flex-grow container mx-auto p-4 md:p-8 flex flex-col items-center justify-center">
-        <div class="text-center py-16 px-4 max-w-4xl">
-            <h1 class="text-5xl md:text-6xl font-extrabold text-primary mb-6 leading-tight">
-                Build Beautiful UIs, Effortlessly.
-            </h1>
-            <p class="text-lg md:text-xl text-base-content/80 mb-8 max-w-2xl mx-auto">
-                Leverage the power of Tailwind CSS and DaisyUI to create stunning, responsive web applications with minimal effort.
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <button class="btn btn-primary btn-lg rounded-full shadow-lg hover:scale-105 transition-transform duration-300">
-                    Get Started
-                </button>
-                <button class="btn btn-outline btn-lg rounded-full shadow-lg hover:bg-base-300 hover:scale-105 transition-transform duration-300">
-                    Learn More
-                </button>
-            </div>
-        </div>
-
-        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl mt-12">
-            <div class="card bg-base-100 shadow-xl rounded-xl p-6 hover:shadow-2xl transition-shadow duration-300">
-                <figure class="mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-secondary mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9.75 12C9.75 11.2044 10.0661 10.4413 10.6289 9.87847C11.1918 9.31561 11.9549 9 12.75 9H14.25C15.0451 9 15.8082 9.31561 16.3711 9.87847C16.9339 10.4413 17.25 11.2044 17.25 12V17M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" />
-                    </svg>
-                </figure>
-                <div class="card-body p-0 text-center">
-                    <h2 class="card-title text-2xl font-semibold text-primary mb-3 justify-center">Responsive by Design</h2>
-                    <p class="text-base-content/70">
-                        Craft layouts that look amazing on any device, from mobile phones to large desktop monitors, without extra effort.
-                    </p>
-                </div>
-            </div>
-
-            <div class="card bg-base-100 shadow-xl rounded-xl p-6 hover:shadow-2xl transition-shadow duration-300">
-                <figure class="mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-accent mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </figure>
-                <div class="card-body p-0 text-center">
-                    <h2 class="card-title text-2xl font-semibold text-primary mb-3 justify-center">Configurable Themes</h2>
-                    <p class="text-base-content/70">
-                        Easily switch between various themes or customize your own to match your brand's aesthetic perfectly.
-                    </p>
-                </div>
-            </div>
-
-            <div class="card bg-base-100 shadow-xl rounded-xl p-6 hover:shadow-2xl transition-shadow duration-300">
-                <figure class="mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-info mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                </figure>
-                <div class="card-body p-0 text-center">
-                    <h2 class="card-title text-2xl font-semibold text-primary mb-3 justify-center">Rapid Development</h2>
-                    <p class="text-base-content/70">
-                        Accelerate your development workflow with pre-built components and utility-first CSS, saving valuable time.
-                    </p>
-                </div>
-            </div>
-        </section>
-
-        <section class="bg-base-100 rounded-2xl shadow-xl p-8 md:p-12 mt-16 w-full max-w-2xl">
-            <h2 class="text-3xl md:text-4xl font-bold text-center text-primary mb-8">Submit Your Details</h2>
-            <form id="myForm" class="space-y-6">
-                <div>
-                    <label for="name" class="label">
-                        <span class="label-text text-base-content">Your Name</span>
-                    </label>
-                    <input type="text" id="name" name="name" placeholder="John Doe" class="input input-bordered w-full rounded-lg" required />
-                </div>
-                <div>
-                    <label for="email" class="label">
-                        <span class="label-text text-base-content">Your Email</span>
-                    </label>
-                    <input type="email" id="email" name="email" placeholder="john.doe@example.com" class="input input-bordered w-full rounded-lg" required />
-                </div>
-                <div>
-                    <label for="message" class="label">
-                        <span class="label-text text-base-content">Your Message</span>
-                    </label>
-                    <textarea id="message" name="message" placeholder="Type your message here..." class="textarea textarea-bordered h-24 w-full rounded-lg"></textarea>
-                </div>
-                <div class="text-center">
-                    <button type="submit" class="btn btn-primary btn-lg rounded-full shadow-lg hover:scale-105 transition-transform duration-300">
-                        Submit Form
-                    </button>
-                </div>
-            </form>
-            <div id="formStatus" class="mt-4 text-center text-success font-semibold"></div>
-        </section>
-
-        <section class="bg-primary text-primary-content rounded-2xl shadow-xl p-8 md:p-12 mt-16 w-full max-w-4xl text-center">
-            <h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to Transform Your Design?</h2>
-            <p class="text-lg mb-8 opacity-90">
-                Join thousands of developers building amazing things with DaisyUI and Tailwind CSS today.
-            </p>
-            <button class="btn btn-secondary btn-lg rounded-full shadow-lg hover:scale-105 transition-transform duration-300">
-                Sign Up Now
-            </button>
-        </section>
+    <main class="flex-grow container mx-auto !p-2 md:!p-4 flex flex-col items-center justify-center">
+       ${uiElement}
     </main>
-
-    <footer class="footer footer-center p-8 bg-base-300 text-base-content rounded-t-xl shadow-inner mt-12">
-        <aside>
-            <p class="font-bold text-lg">
-                My Awesome App <br/>Providing reliable services since 2023
-            </p>
-            <p class="text-sm opacity-80">
-                Copyright © 2023 - All right reserved
-            </p>
-        </aside>
-        <nav>
-            <div class="grid grid-flow-col gap-4">
-                <a class="link link-hover">About us</a>
-                <a class="link link-hover">Contact</a>
-                <a class="link link-hover">Jobs</a>
-                <a class="link link-hover">Press kit</a>
-            </div>
-        </nav>
-    </footer>
 
     <script>
         // JavaScript to handle form submission and send data to parent
@@ -341,9 +236,7 @@ const htmlFormExample = `
     </script>
 
 </body>
-</html>
-
-`;
+</html>`;
 
 // Example chat data for initial state
 const exampleChat = [
@@ -366,25 +259,147 @@ const exampleChat = [
     id: '3',
   },
   {
-    role: 'assistant',
-    content: `Also check this example with form and submit button
-    \`\`\`html${htmlFormExample}\`\`\`
-    This is very simple example, you can use any tailwindcss and daisyui components to create your own design
-    `,
+    role: 'user',
+    content: 'Create a contact form UI component with validation and submission handling',
     id: '4',
+  },
+  {
+    role: 'assistant',
+    content: `I'd be happy to create a contact form UI component for you. Here's a professional contact form with validation and submission handling:
+    
+    \`\`\`UI
+    <section id="country-graphs" class="ui">
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4">
+      <h3 class="card-title text-base font-medium">Country Comparison Graphs</h3>
+      <p class="text-sm text-base-content/70 mb-3">Visual representation of key metrics for influential countries.</p>
+
+      <!-- Plotly Graph Containers -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card bg-base-200 shadow-sm">
+          <div class="card-body">
+            <h4 class="font-medium text-sm">GDP Comparison</h4>
+            <div id="gdpChart" class="h-64 w-full"></div>
+          </div>
+        </div>
+
+        <div class="card bg-base-200 shadow-sm">
+          <div class="card-body">
+            <h4 class="font-medium text-sm">Population Growth</h4>
+            <div id="populationChart" class="h-64 w-full"></div>
+          </div>
+        </div>
+
+        <div class="card bg-base-200 shadow-sm">
+          <div class="card-body">
+            <h4 class="font-medium text-sm">Export and Import Values</h4>
+            <div id="tradeChart" class="h-64 w-full"></div>
+          </div>
+        </div>
+
+        <div class="card bg-base-200 shadow-sm">
+          <div class="card-body">
+            <h4 class="font-medium text-sm">Internet Usage</h4>
+            <div id="internetUsageChart" class="h-64 w-full"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // GDP Comparison - Bar Chart
+      Plotly.newPlot('gdpChart', [{
+        x: ['USA', 'China', 'India', 'Germany'],
+        y: [21, 14, 2.9, 3.8],
+        type: 'bar',
+        marker: {
+          color: 'hsl(var(--p))'
+        }
+      }], {
+        margin: { t: 10, r: 10, l: 40, b: 40 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: { family: 'Inter, sans-serif', size: 10 },
+        xaxis: { fixedrange: true },
+        yaxis: { title: 'GDP in Trillions', fixedrange: true }
+      }, {responsive: true});
+
+      // Population Growth - Line Chart
+      Plotly.newPlot('populationChart', [{
+        x: ['2010', '2015', '2020', '2025'],
+        y: [6.9, 7.3, 7.8, 8.2],
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: {
+          color: 'hsl(var(--s))',
+          width: 2
+        }
+      }], {
+        margin: { t: 10, r: 10, l: 40, b: 40 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: { family: 'Inter, sans-serif', size: 10 },
+        xaxis: { fixedrange: true },
+        yaxis: { title: 'Population (Billions)', fixedrange: true }
+      }, {responsive: true});
+
+      // Trade Values - Pie Chart
+      Plotly.newPlot('tradeChart', [{
+        values: [15, 12],
+        labels: ['Exports', 'Imports'],
+        type: 'pie',
+        marker: {
+          colors: ['hsl(var(--in))', 'hsl(var(--wa))']
+        },
+        textinfo: 'label+percent'
+      }], {
+        margin: { t: 10, r: 10, l: 10, b: 10 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: { family: 'Inter, sans-serif', size: 10 },
+        showlegend: false
+      }, {responsive: true});
+
+      // Internet Usage - Radar Chart (Plotly uses 'scatterpolar' for radar charts)
+      Plotly.newPlot('internetUsageChart', [{
+        type: 'scatterpolar',
+        r: [300, 800, 600, 89],
+        theta: ['USA', 'China', 'India', 'Germany'],
+        fill: 'toself',
+        fillcolor: 'rgba(var(--a), 0.2)',
+        line: {
+          color: 'hsl(var(--a))'
+        }
+      }], {
+        margin: { t: 10, r: 10, l: 10, b: 10 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: { family: 'Inter, sans-serif', size: 10 },
+        polar: {
+          radialaxis: {
+            visible: true,
+            range: [0, 900],
+            title: { text: 'Internet Users (Millions)', font: { size: 8 } }
+          }
+        }
+      }, {responsive: true});
+    });
+  </script>
+</section>
+    \`\`\`
+`,
+    id: '5',
   },
 ];
 
-export default function ChatInterface({
-  initialMessages = exampleChat,
-  isMinimized = false,
-}: ChatInterfaceProps) {
+export default function ChatInterface({ initialMessages, isMinimized = false }: ChatInterfaceProps) {
   // UI state management
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<'openai' | 'anthropic'>('openai');
-  const [showHtmlPreview, setShowHtmlPreview] = useState<boolean>(false);
-  const [isCopied, setIsCopied] = useState<boolean>(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [uiData, setUIdata] = useState<any | null>(null);
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [tempInput, setTempInput] = useState<string>('');
@@ -408,12 +423,17 @@ export default function ChatInterface({
     status,
     error: chatError,
     setInput,
+    setMessages,
   } = useChat({
     api: '/api/ai/chat',
     initialMessages: initialMessages,
     body: {
       provider,
+      uiData,
       temperature: 0.7,
+    },
+    onFinish: () => {
+      setUIdata(null);
     },
   });
 
@@ -534,7 +554,6 @@ export default function ChatInterface({
     // Reset history navigation state
     setHistoryIndex(-1);
     setTempInput('');
-    setIsCopied(false);
     handleChatSubmit(e);
   };
 
@@ -543,7 +562,7 @@ export default function ChatInterface({
    */
   const renderEmptyState = () => (
     <div className="flex flex-col pt-12 items-center justify-center text-base-content/60">
-      <Icon icon="carbon:chat" className="w-16 h-16 mb-4" />
+      <div className="mask mask-hexagon-2 circle-bg h-8 mb-4" />
       <p className="text-lg font-medium">Start a conversation with the AI</p>
     </div>
   );
@@ -604,9 +623,11 @@ export default function ChatInterface({
           } transition-[width] duration-300 ease-in-out`}
         >
           <FormatMessageContent
-            content={content}
-            isExpanded={isExpanded}
+            key={message.id || `msg-content-${index}`}
+            content={content || null}
+            isExpanded={isExpanded || false}
             setIsExpanded={setIsExpanded}
+            setUIdata={setUIdata}
           />
         </div>
       </div>
@@ -678,16 +699,23 @@ export default function ChatInterface({
           </div>
 
           <div className="flex justify-between items-center px-3 pb-1 border-base-300">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-base-content/60">
-                {2000 - input.length} characters remaining
-              </span>
-              {inputHistory.length > 0 && (
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-base-content/60">({2000 - input.length})</span>
+              {uiData && (
+                <div
+                  title="UI data included in the message"
+                  className="badge cursor-default glass badge-md hover:bg-gradient-to-r hover:from-primary/80 hover:via-secondary/80 hover:to-accent/80"
+                >
+                  UI form included
+                </div>
+              )}
+              {/* {inputHistory.length > 0 && (
                 <span className="text-xs text-base-content/40">
                   • {inputHistory.length}/8 history
                 </span>
-              )}
+              )} */}
             </div>
+
             <div className="flex items-center gap-1 space-x-2">
               <div
                 onClick={() => setProvider('openai')}
@@ -807,15 +835,19 @@ const FormatMessageContent = ({
   content,
   isExpanded = false,
   setIsExpanded,
+  setUIdata,
 }: {
-  content: string;
+  content: string | null;
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
+  setUIdata: (data: any) => void;
 }) => {
   if (!content) return null;
   const [isCopied, setIsCopied] = useState(false);
   const [showHtmlPreview, setShowHtmlPreview] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const theme = useRef<string>(getRandomTheme());
   const update = useBoolean(false);
 
   // Effect to listen for messages from the iframe (form submissions)
@@ -827,7 +859,9 @@ const FormatMessageContent = ({
         (event.data.type === 'formSubmission' || event.data.type === 'websiteSubmission')
       ) {
         console.log(`${event.data.type} received:`, event.data.payload);
-        // You could add additional handling here, like showing a notification
+        // Handle the form submission data
+        const payload = event.data.payload;
+        setUIdata(payload); // Update the UI data state with the received payload
       }
     };
 
@@ -844,6 +878,22 @@ const FormatMessageContent = ({
     update.toggle();
   }, [showHtmlPreview, isExpanded]);
 
+  // Effect to process MathJax after rendering
+  useEffect(() => {
+    if (contentRef.current && typeof window !== 'undefined' && window.MathJax) {
+      // Use setTimeout to ensure DOM is fully updated
+      setTimeout(() => {
+        try {
+          window.MathJax.typesetPromise([contentRef.current]).catch((err: any) => {
+            console.error('MathJax typesetting failed:', err);
+          });
+        } catch (err) {
+          console.error('Error calling MathJax:', err);
+        }
+      }, 100);
+    }
+  }, [content, showHtmlPreview]);
+
   // Split the message by common code block markers
   const parts = content.split(/(```[\s\S]*?```|`[\s\S]*?`)/g);
 
@@ -853,8 +903,20 @@ const FormatMessageContent = ({
       const code = part.substring(3, part.length - 3);
       const languageMatch = code.match(/^[a-zA-Z0-9_+-]+/);
       const language = languageMatch ? languageMatch[0].trim() : '';
-      const codeContent = language ? code.substring(language.length).trim() : code;
-      const isValidHtml = validateHtml(codeContent);
+      let codeContent = language ? code.substring(language.length).trim() : code;
+      let isValidHtml, isUI;
+      if (language === 'UI') {
+        // clientLogger.info('UI_AI', 'Rendering UI Document');
+        if (!showHtmlPreview && process.env.NODE_ENV === 'production') {
+          setShowHtmlPreview(true);
+          // setIsExpanded(true);
+        }
+        isUI = true;
+        isValidHtml = validateHtml(uiDocumentWrapper(codeContent));
+        codeContent = uiDocumentWrapper(codeContent, theme.current);
+      } else {
+        isValidHtml = validateHtml(codeContent);
+      }
 
       return (
         <pre
@@ -864,10 +926,18 @@ const FormatMessageContent = ({
           <div className="text-xs items-center flex justify-between mb-1">
             {language && (
               <div className="flex items-center gap-2">
-                <div
-                  id="star"
-                  className="h-3 w-3 bg-gradient-to-b from-yellow-500 via-amber-500 to-orange-500 mask mask-star-2"
-                />
+                {isUI ? (
+                  <div
+                    id="heart"
+                    className="h-3 w-3 bg-gradient-to-r from-primary to-secondary mask mask-heart"
+                  />
+                ) : (
+                  <div
+                    id="star"
+                    className="h-3 w-3 bg-gradient-to-b from-yellow-500 via-amber-500 to-orange-500 mask mask-star-2"
+                  />
+                )}
+
                 <div className="">{language}</div>
               </div>
             )}
@@ -877,6 +947,7 @@ const FormatMessageContent = ({
                   navigator.clipboard.writeText(codeContent);
                   setIsCopied(true);
                 }}
+                style={{ display: isUI && process.env.NODE_ENV === 'production' ? 'none' : 'flex' }}
                 className={`flex cursor-pointer hover:text-accent ${
                   isCopied ? 'text-success' : ''
                 }`}
@@ -907,6 +978,9 @@ const FormatMessageContent = ({
                   <div
                     title={showHtmlPreview ? 'Switch to code view' : 'Switch to preview'}
                     onClick={() => setShowHtmlPreview(!showHtmlPreview)}
+                    style={{
+                      display: isUI && process.env.NODE_ENV === 'production' ? 'none' : 'flex',
+                    }}
                     className="flex cursor-pointer hover:text-primary/80 transition-colors"
                   >
                     <Icon
@@ -922,13 +996,15 @@ const FormatMessageContent = ({
             </div>
           </div>
           <AnimatePresence>
-            {isValidHtml && showHtmlPreview ? (
+            {(isValidHtml && showHtmlPreview) || (isUI && process.env.NODE_ENV === 'production') ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <iframe
                   ref={iframeRef}
                   srcDoc={codeContent}
-                  className="w-full border-0 rounded-lg transition-[height]"
-                  style={{ minHeight: isExpanded ? '80vh' : '350px' }}
+                  className="w-full border-0 bg-transparent rounded-lg transition-[height]"
+                  style={{
+                    minHeight: isExpanded ? '500px' : isUI ? '500px' : '350px',
+                  }}
                   title="HTML Preview"
                   sandbox="allow-forms allow-scripts allow-same-origin"
                 />
@@ -953,9 +1029,9 @@ const FormatMessageContent = ({
     else if (part.startsWith('```') || part.startsWith('`')) {
       // This is a code block or inline code, but not a complete one
       return (
-        <div className="p-4 flex items-center justify-center h-[calc(100vh-8rem)]">
+        <div key={i} className="p-4 flex items-center justify-center min-h-24">
           <div className="card p-2 shadow-lg">
-            <span className="loading loading-spinner loading-lg"></span>
+            <span className="loading loading-spinner loading-xs"></span>
           </div>
         </div>
       );

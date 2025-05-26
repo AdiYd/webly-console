@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 // Import streamText and specific provider integrations with tools
-import { streamText, Message, tool, Tool } from 'ai';
+import { streamText, Message, tool, Tool, UIMessage } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 
@@ -8,6 +8,7 @@ import { auth } from '@/auth'; // Import auth for session handling
 import { serverLogger } from '@/utils/logger';
 import { firestoreTools } from '@/lib/tools/firestore-tools';
 import { getAdminFirebase } from '@/lib/firebase/firebase-admin';
+import { prompts } from './prompts';
 
 const initiateAdminFireBase = getAdminFirebase();
 const loggedFirestoreTools = Object.entries(firestoreTools).reduce((acc, [key, tool]) => {
@@ -86,7 +87,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { messages, provider = 'openai', temperature = 0.7, systemPrompt = '', maxTokens } = body;
+    const {
+      messages,
+      provider = 'openai',
+      temperature = 0.7,
+      systemPrompt = '',
+      maxTokens,
+      uiData,
+    } = body;
 
     serverLogger.info('ChatAPI', 'Received request', {
       provider,
@@ -102,25 +110,31 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const finalPrompt = `${systemPrompt}`;
+    const finalPrompt = `${systemPrompt}. \n ${prompts.ui} \n ${prompts.general}`;
     const commonTools = { ...loggedFirestoreTools };
+    const processedMessages = messages.map(msg => {
+      if (msg.role === 'user') {
+        return {
+          ...msg,
+          content: msg.content.replace(/```UI[\s\S]*?```/g, `<-- UI COMPONENT -->`), // Replace UI code block with a placeholder
+        };
+      }
+      return msg;
+    });
+    if (uiData) {
+      processedMessages.push({
+        role: 'user',
+        content: `UI Data result: ${JSON.stringify(uiData, null, 2)}`,
+      } as UIMessage);
+
+      console.log('UI Data added to messages:', uiData);
+    }
 
     // Use streamText for different providers
     let modelProvider;
-
-    // console.log(' *************  Starting text stream... ************* ');
-    // const { textStream } = streamText({
-    //   model: anthropic('claude-3-5-sonnet-latest'),
-    //   prompt: 'Write a poem about embedding models.',
-    // });
-    // for await (const textPart of textStream) {
-    //   console.log(textPart);
-    // }
-    // console.log(' *************  Text stream completed. ************* ');
-
     switch (provider) {
       case 'openai':
-        modelProvider = openai('gpt-4o');
+        modelProvider = openai('gpt-4o-mini');
         serverLogger.info('ChatAPI', 'Using OpenAI provider', { model: 'gpt-4o' });
         break;
 
@@ -158,10 +172,11 @@ export async function POST(req: NextRequest) {
     try {
       const result = streamText({
         model: modelProvider,
-        messages,
-        ...(provider !== 'anthropic' && { system: finalPrompt }),
+        messages: processedMessages.slice(processedMessages.length - 9, processedMessages.length), // Limit to last 9 messages
+        // ...(provider !== 'anthropic' && { system: finalPrompt }),
+        ...(finalPrompt && { system: finalPrompt }),
         ...(maxTokens && { maxTokens }),
-        temperature,
+        ...(temperature && { temperature }),
         maxRetries: 3,
         maxSteps: 10,
       });

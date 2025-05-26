@@ -18,6 +18,22 @@
   }
 }
 
+.MathJax {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.math-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.math-display {
+  display: block;
+  margin: 1em 0;
+  text-align: center;
+}
+
 .circle-bg {
   width: 150px;
   height: 150px;
@@ -30,7 +46,7 @@
 .circle-bg::after {
   content: '';
   position: absolute;
-  /* border-radius: 50%; */
+  border-radius: 50%;
   filter: blur(10px);
   animation: moveGradient 7s infinite alternate-reverse,
     spin 8s linear infinite both alternate-reverse;
@@ -45,6 +61,41 @@
 }
 
 .circle-bg::after {
+  width: 90%;
+  height: 90%;
+  background: radial-gradient(circle at 70% 80%, oklch(var(--a)) 20%, oklch(var(--p)), transparent);
+  bottom: -5%;
+  right: -5%;
+  animation-delay: 5s;
+}
+
+.gradient-bg {
+  /* width: 150px;
+  height: 150px; */
+  /* border-radius: 50%; */
+  position: relative;
+  overflow: hidden;
+}
+
+.gradient-bg::before,
+.gradient-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(10px);
+  animation: moveGradient 7s infinite alternate-reverse,
+    spin 8s linear infinite both alternate-reverse;
+}
+
+.gradient-bg::before {
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(circle at 20% 30%, oklch(var(--s)) 20%, oklch(var(--p)), transparent);
+  top: -10%;
+  left: -10%;
+}
+
+.gradient-bg::after {
   width: 90%;
   height: 90%;
   background: radial-gradient(circle at 70% 80%, oklch(var(--a)) 20%, oklch(var(--p)), transparent);

@@ -57,6 +57,31 @@ export default async function RootLayout({
             `,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+        window.MathJax = {
+          tex: {
+            inlineMath: [['\\\\(', '\\\\)']],
+            displayMath: [['\\\\[', '\\\\]']],
+            processEscapes: true
+          },
+          options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+          },
+          startup: {
+            pageReady() {
+              return MathJax.startup.defaultPageReady().then(() => {
+                console.log('MathJax initial typesetting complete');
+              });
+            }
+          }
+        };
+      `,
+          }}
+        />
+        {/* Load MathJax after configuration */}
+        <script src="https://cdn.plot.ly/plotly-3.0.1.min.js" async charSet="utf-8"></script>
       </head>
       <body
         className={`relative max-w-full overflow-x-hidden min-h-screen max-h-screen flex flex-col`}
