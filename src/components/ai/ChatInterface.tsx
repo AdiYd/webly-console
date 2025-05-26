@@ -394,7 +394,10 @@ const exampleChat = [
   },
 ];
 
-export default function ChatInterface({ initialMessages, isMinimized = false }: ChatInterfaceProps) {
+export default function ChatInterface({
+  initialMessages = exampleChat,
+  isMinimized = false,
+}: ChatInterfaceProps) {
   // UI state management
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<'openai' | 'anthropic'>('openai');
@@ -649,7 +652,7 @@ export default function ChatInterface({ initialMessages, isMinimized = false }: 
         {error && !isLoading && (
           <div className="alert alert-error w-fit ml-12 shadow-lg mt-2">
             <Icon icon="carbon:warning" className="w-6 h-6" />
-            <span>{error}</span>
+            <span dangerouslySetInnerHTML={{ __html: error }} />
             <button className="btn btn-sm btn-ghost" onClick={() => setError(null)}>
               <Icon icon="carbon:close" className="w-4 h-4" />
               Close
@@ -674,9 +677,10 @@ export default function ChatInterface({ initialMessages, isMinimized = false }: 
               ref={textareaRef}
               value={input}
               onChange={handleInputChange}
-              placeholder="Type your message here... (Ctrl+↑/↓ for history)"
+              // placeholder="Type your message here... (Ctrl+↑/↓ for history)"
+              placeholder="Type your message here..."
               className="w-full resize-none bg-transparent focus:outline-none mr-2 overflow-y-auto"
-              maxLength={2000}
+              maxLength={3000}
               disabled={isLoading}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -700,7 +704,7 @@ export default function ChatInterface({ initialMessages, isMinimized = false }: 
 
           <div className="flex justify-between items-center px-3 pb-1 border-base-300">
             <div className="flex items-center gap-4">
-              <span className="text-xs text-base-content/60">({2000 - input.length})</span>
+              <span className="text-xs text-base-content/60">{3000 - input.length} chars left</span>
               {uiData && (
                 <div
                   title="UI data included in the message"
@@ -929,7 +933,7 @@ const FormatMessageContent = ({
                 {isUI ? (
                   <div
                     id="heart"
-                    className="h-3 w-3 bg-gradient-to-r from-primary to-secondary mask mask-heart"
+                    className="h-3 w-3 bg-gradient-to-r from-primary to-accent mask mask-hexagon-2"
                   />
                 ) : (
                   <div
