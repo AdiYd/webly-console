@@ -56,7 +56,8 @@ type EditorAction =
   | { type: 'REDO' }
   | { type: 'UPDATE_SECTION'; payload: { sectionId: string; section: any } }
   | { type: 'MOVE_SECTION'; payload: { sectionId: string; direction: 'up' | 'down' } }
-  | { type: 'DUPLICATE_SECTION'; payload: { sectionId: string } };
+  | { type: 'DUPLICATE_SECTION'; payload: { sectionId: string } }
+  | { type: 'REORDER_SECTION'; payload: { sectionId: string; newIndex: number } };
 
 const initialTheme: Partial<WebsiteTheme> = {
   colors: {
@@ -226,6 +227,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       if (sectionToDuplicate) {
         const duplicatedSection = { ...sectionToDuplicate, id: generateUniqueId() };
+
         return {
           ...state,
           currentPage: {
@@ -236,6 +238,21 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
               ...state.currentPage.sections.slice(sectionIndex + 1),
             ],
           },
+          hasUnsavedChanges: true,
+        };
+      }
+      return state;
+
+    case 'REORDER_SECTION':
+      const { sectionId: reorderSectionId, newIndex } = action.payload;
+      const currentSections = state.currentPage.sections;
+      const sectionToMove = currentSections.find(section => section.id === reorderSectionId);
+      if (sectionToMove) {
+        const updatedSections = currentSections.filter(section => section.id !== reorderSectionId);
+        updatedSections.splice(newIndex, 0, sectionToMove);
+        return {
+          ...state,
+          currentPage: { ...state.currentPage, sections: updatedSections },
           hasUnsavedChanges: true,
         };
       }
@@ -280,6 +297,7 @@ interface EditorContextType {
     updateSection: (sectionId: string, section: any) => void;
     moveSection: (sectionId: string, direction: 'up' | 'down') => void;
     duplicateSection: (sectionId: string) => void;
+    reorderSection: (sectionId: string, newIndex: number) => void;
     saveToHistory: () => void;
     undo: () => void;
     redo: () => void;
@@ -381,6 +399,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'DUPLICATE_SECTION', payload: { sectionId } });
   }, []);
 
+  const reorderSection = useCallback((sectionId: string, newIndex: number) => {
+    dispatch({ type: 'REORDER_SECTION', payload: { sectionId, newIndex } });
+  }, []);
+
   const saveToHistory = useCallback(() => {
     dispatch({ type: 'SAVE_TO_HISTORY' });
   }, []);
@@ -459,6 +481,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     updateSection,
     moveSection,
     duplicateSection,
+    reorderSection,
     saveToHistory,
     undo,
     redo,

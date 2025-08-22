@@ -48,8 +48,9 @@ export function LeftSidebar() {
           {currentPage.sections.map((section, index) => (
             <motion.div
               key={section.id || index}
+              style={{ zIndex: (currentPage.sections.length - index + 1) * 10 }}
               layout
-              className={`card card-compact cursor-pointer transition-all duration-200 ${
+              className={`card card-compact relative cursor-pointer transition-all duration-200 ${
                 selectedSectionId === section.id
                   ? '!bg-primary/10 !border-primary/50 !border-2'
                   : 'bg-base-100 hover:bg-base-300/50'
@@ -100,50 +101,52 @@ export function LeftSidebar() {
                     >
                       <Icon icon="mdi:dots-vertical" className="text-xs" />
                     </div>
-                    <ul
-                      tabIndex={0}
-                      className="dropdown-content z-[999] menu p-2 shadow bg-base-100 rounded-box w-48"
-                      onClick={e => e.stopPropagation()} // Prevent triggering the card click
-                    >
-                      <li>
-                        <a onClick={() => console.log('Edit section', section.id)}>
-                          <Icon icon="mdi:pencil" />
-                          Edit
-                        </a>
-                      </li>
-                      <li>
-                        <a onClick={() => actions.duplicateSection(section.id as string)}>
-                          <Icon icon="mdi:content-copy" />
-                          Duplicate
-                        </a>
-                      </li>
-                      <li>
-                        <a
-                          onClick={() => {
-                            actions.moveSection(section.id as string, 'up');
-                          }}
-                        >
-                          <Icon icon="mdi:arrow-up" />
-                          Move Up
-                        </a>
-                      </li>
-                      <li>
-                        <a onClick={() => actions.moveSection(section.id as string, 'down')}>
-                          <Icon icon="mdi:arrow-down" />
-                          Move Down
-                        </a>
-                      </li>
-                      <div className="divider my-1"></div>
-                      <li>
-                        <a
-                          onClick={() => console.log('Delete section', section.id)}
-                          className="text-error"
-                        >
-                          <Icon icon="mdi:delete" />
-                          Delete
-                        </a>
-                      </li>
-                    </ul>
+                    <div className="z-[9999] fixed">
+                      <ul
+                        tabIndex={0}
+                        className="dropdown-content z-[999] menu p-2 shadow bg-base-100 rounded-box w-48"
+                        onClick={e => e.stopPropagation()} // Prevent triggering the card click
+                      >
+                        <li>
+                          <a onClick={() => console.log('Edit section', section.id)}>
+                            <Icon icon="mdi:pencil" />
+                            Edit
+                          </a>
+                        </li>
+                        <li>
+                          <a onClick={() => actions.duplicateSection(section.id as string)}>
+                            <Icon icon="mdi:content-copy" />
+                            Duplicate
+                          </a>
+                        </li>
+                        <li>
+                          <a
+                            onClick={() => {
+                              actions.moveSection(section.id as string, 'up');
+                            }}
+                          >
+                            <Icon icon="mdi:arrow-up" />
+                            Move Up
+                          </a>
+                        </li>
+                        <li>
+                          <a onClick={() => actions.moveSection(section.id as string, 'down')}>
+                            <Icon icon="mdi:arrow-down" />
+                            Move Down
+                          </a>
+                        </li>
+                        <div className="divider my-1"></div>
+                        <li>
+                          <a
+                            onClick={() => console.log('Delete section', section.id)}
+                            className="text-error"
+                          >
+                            <Icon icon="mdi:delete" />
+                            Delete
+                          </a>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
