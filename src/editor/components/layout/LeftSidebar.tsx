@@ -24,6 +24,11 @@ export function LeftSidebar() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-base-content">Sections</h2>
           <button
+            onClick={() => actions.setLeftDrawer(false)}
+            className="btn btn-ghost btn-sm"
+            title="Close sidebar"
+          />
+          <button
             onClick={addNewSection}
             className="btn btn-primary btn-sm btn-circle"
             title="Add new section"

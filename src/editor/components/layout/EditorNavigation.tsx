@@ -87,7 +87,7 @@ export function EditorNavigation() {
           {/* Right Section - Actions */}
           <div className="flex items-center gap-2">
             {/* History Controls */}
-            <div className="join">
+            <div className="join border border-zinc-400/40">
               <button
                 className="btn btn-ghost btn-sm join-item"
                 onClick={actions.undo}
@@ -105,7 +105,7 @@ export function EditorNavigation() {
             </div>
 
             {/* View Controls */}
-            <div className="join">
+            <div className="join border border-zinc-400/40">
               <button
                 className={`btn btn-ghost btn-sm join-item ${leftDrawerOpen ? 'btn-active' : ''}`}
                 onClick={() => actions.setLeftDrawer(!leftDrawerOpen)}
@@ -133,7 +133,7 @@ export function EditorNavigation() {
             <button
               onClick={handleSave}
               disabled={isSaving || !hasUnsavedChanges}
-              className={`btn btn-primary btn-sm gap-2 ${isSaving ? 'loading' : ''}`}
+              className={`btn btn-neutral btn-sm gap-2 ${isSaving ? 'loading' : ''}`}
               title="Save changes (Ctrl+S)"
             >
               {!isSaving && <Icon icon="mdi:content-save" className="text-lg" />}

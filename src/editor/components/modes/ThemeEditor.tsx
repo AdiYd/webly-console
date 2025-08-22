@@ -4,67 +4,142 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
-import { WebsiteTheme } from '@/types/mock';
-import { useTheme } from '@/context/theme-provider';
+import { fontOptions } from '@/components/pageParser/pageParser';
 
 const colorPresets = [
-  { name: 'Blue Ocean', primary: '#3B82F6', secondary: '#1E40AF', accent: '#06B6D4' },
-  { name: 'Forest Green', primary: '#059669', secondary: '#047857', accent: '#10B981' },
-  { name: 'Sunset Orange', primary: '#EA580C', secondary: '#C2410C', accent: '#F97316' },
-  { name: 'Purple Dream', primary: '#7C3AED', secondary: '#5B21B6', accent: '#8B5CF6' },
-  { name: 'Rose Gold', primary: '#E11D48', secondary: '#BE185D', accent: '#F43F5E' },
-  { name: 'Midnight', primary: '#1F2937', secondary: '#111827', accent: '#374151' },
-];
-
-const fontOptions = [
-  { name: 'Inter', class: 'font-inter', preview: 'Modern & Clean' },
-  { name: 'Poppins', class: 'font-poppins', preview: 'Friendly & Round' },
-  { name: 'Roboto', class: 'font-roboto', preview: 'Technical & Clear' },
-  { name: 'Playfair', class: 'font-playfair', preview: 'Elegant & Serif' },
-  { name: 'Montserrat', class: 'font-montserrat', preview: 'Bold & Geometric' },
+  {
+    mode: 'light',
+    name: 'Blue Ocean',
+    primary: '#3B82F6',
+    secondary: '#1E40AF',
+    accent: '#06B6D4',
+  },
+  {
+    mode: 'light',
+    name: 'Forest Green',
+    primary: '#059669',
+    secondary: '#047857',
+    accent: '#10B981',
+  },
+  {
+    mode: 'light',
+    name: 'Sunset Orange',
+    primary: '#EA580C',
+    secondary: '#C2410C',
+    accent: '#F97316',
+  },
+  {
+    mode: 'light',
+    name: 'Purple Dream',
+    primary: '#7C3AED',
+    secondary: '#5B21B6',
+    accent: '#8B5CF6',
+  },
+  { mode: 'light', name: 'Rose Gold', primary: '#E11D48', secondary: '#BE185D', accent: '#F43F5E' },
+  { mode: 'light', name: 'Midnight', primary: '#1F2937', secondary: '#111827', accent: '#374151' },
+  {
+    mode: 'light',
+    name: 'Soft Pastel',
+    primary: '#FBBF24',
+    secondary: '#FCD34D',
+    accent: '#FDE68A',
+  },
+  { mode: 'light', name: 'Cool Gray', primary: '#9CA3AF', secondary: '#6B7280', accent: '#D1D5DB' },
+  {
+    mode: 'dark',
+    name: 'Light style',
+    primary: '#FFFFFF',
+    secondary: '#F3F4F6',
+    accent: '#E5E7EB',
+  },
+  { mode: 'dark', name: 'Dark Ocean', primary: '#1E3A8A', secondary: '#1E40AF', accent: '#06B6D4' },
+  {
+    mode: 'dark',
+    name: 'Dark Forest',
+    primary: '#064E3B',
+    secondary: '#065F46',
+    accent: '#10B981',
+  },
+  {
+    mode: 'dark',
+    name: 'Dark Sunset',
+    primary: '#7C2D12',
+    secondary: '#9A3412',
+    accent: '#C2410C',
+  },
+  {
+    mode: 'dark',
+    name: 'Dark Purple',
+    primary: '#5B21B6',
+    secondary: '#6D28D9',
+    accent: '#8B5CF6',
+  },
+  { mode: 'dark', name: 'Dark Rose', primary: '#BE185D', secondary: '#9B1C30', accent: '#F43F5E' },
+  {
+    mode: 'dark',
+    name: 'Dark Pastel',
+    primary: '#FBBF24',
+    secondary: '#FCD34D',
+    accent: '#FDE68A',
+  },
+  { mode: 'dark', name: 'Dark Gray', primary: '#6B7280', secondary: '#9CA3AF', accent: '#D1D5DB' },
+  { mode: 'dark', name: 'Dark Light', primary: '#F3F4F6', secondary: '#FFFFFF', accent: '#E5E7EB' },
 ];
 
 export function ThemeEditor() {
   const { state, actions } = useEditor();
-  const { isDarkTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'colors' | 'typography' | 'effects'>('colors');
+  const [activeTab, setActiveTab] = useState<'colors' | 'typography'>('colors');
 
-  const mode = isDarkTheme ? 'dark' : 'light';
+  const { website, theme } = state;
 
-  const { website } = state;
-  const theme =
-    website.design?.theme ||
-    ({
-      colors: {
-        light: { primary: '#3B82F6', secondary: '#1E40AF', accent: '#06B6D4' },
-      },
-      typography: {
-        fontFamily: 'font-inter',
-        fontSize: { base: '16px', sm: '14px', lg: '18px' },
-        lineHeight: 1.5,
-      },
-    } as WebsiteTheme);
-
+  const currentColors = theme.colors?.light || {
+    primary: '#3B82F6',
+    secondary: '#1E40AF',
+    accent: '#06B6D4',
+  };
+  const currentTypography = theme.typography || { fontFamily: 'Inter' };
   const updateTheme = (updates: any) => {
-    actions.setWebsite({
-      ...website,
-      design: {
-        ...website.design,
-        theme: { ...theme, ...updates },
-      },
+    actions.setTheme({
+      ...theme,
+      ...updates,
     });
   };
 
-  const applyColorPreset = (preset: (typeof colorPresets)[0]) => {
+  const applyColorPreset = (preset: Partial<(typeof colorPresets)[0]>) => {
+    actions.setDaisyTheme(preset.mode === 'dark' ? 'webly-dark' : 'webly-light');
+    console.log('Applying color preset:', preset);
     updateTheme({
       colors: {
         ...theme.colors,
-        primary: preset.primary,
-        secondary: preset.secondary,
-        accent: preset.accent,
+        [preset.mode === 'dark' ? 'dark' : 'light']: {
+          primary: preset.primary || currentColors.primary,
+          secondary: preset.secondary || currentColors.secondary,
+          accent: preset.accent || currentColors.accent,
+        },
       },
     });
     actions.saveToHistory();
+  };
+
+  const updateColor = (colorKey: string, value: string) => {
+    updateTheme({
+      colors: {
+        ...theme.colors,
+        light: {
+          ...currentColors,
+          [colorKey]: value,
+        },
+      },
+    });
+  };
+  const updateTypography = (updates: any) => {
+    console.log('Updating typography:', updates);
+    updateTheme({
+      typography: {
+        ...currentTypography,
+        ...updates,
+      },
+    });
   };
 
   const TabButton = ({ id, label, icon }: { id: string; label: string; icon: string }) => (
@@ -85,7 +160,7 @@ export function ThemeEditor() {
     >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Theme Editor</h3>
-        <button className="btn btn-primary btn-sm" onClick={() => actions.saveToHistory()}>
+        <button className="btn btn-neutral btn-sm" onClick={() => actions.saveToHistory()}>
           <Icon icon="mdi:content-save" className="w-4 h-4 mr-1" />
           Save Theme
         </button>
@@ -95,7 +170,6 @@ export function ThemeEditor() {
       <div className="tabs tabs-boxed">
         <TabButton id="colors" label="Colors" icon="mdi:palette" />
         <TabButton id="typography" label="Typography" icon="mdi:format-text" />
-        <TabButton id="effects" label="Effects" icon="mdi:sparkles" />
       </div>
 
       {/* Colors Tab */}
@@ -113,25 +187,30 @@ export function ThemeEditor() {
                 {colorPresets.map((preset, index) => (
                   <button
                     key={index}
-                    className="btn btn-ghost h-auto p-3 justify-start hover:bg-base-200"
+                    style={{
+                      backgroundColor: preset.mode === 'dark' ? '#1c1917' : '#f8fafc',
+                      border: `1px solid ${preset.mode === 'dark' ? '#27272a' : '#e2e8f0'}`,
+                      color: preset.mode === 'dark' ? '#f3f4f6' : '#334155',
+                    }}
+                    className="btn btn-ghost h-auto p-3 justify-center hover:bg-base-200"
                     onClick={() => applyColorPreset(preset)}
                   >
-                    <div className=" items-center gap-3">
-                      <div className="flex gap-1">
+                    <div className="flex flex-col-reverse items-center gap-3">
+                      <div className="flex gap-1 justify-center">
                         <div
-                          className="w-4 h-4 rounded-full"
+                          className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: preset.primary }}
                         />
                         <div
-                          className="w-4 h-4 rounded-full"
+                          className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: preset.secondary }}
                         />
                         <div
-                          className="w-4 h-4 rounded-full"
+                          className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: preset.accent }}
                         />
                       </div>
-                      <span className="text-sm">{preset.name}</span>
+                      <span className="text-xs text-center">{preset.name}</span>
                     </div>
                   </button>
                 ))}
@@ -147,51 +226,39 @@ export function ThemeEditor() {
                 <div className="form-control">
                   <label className="label">
                     <span className="label-text">Primary Color</span>
-                    <span className="label-text-alt">{theme.colors[mode]?.primary}</span>
+                    <span className="label-text-alt">{currentColors.primary}</span>
                   </label>
                   <input
                     type="color"
                     className="input input-bordered h-12"
-                    value={theme.colors[mode]?.primary}
-                    onChange={e =>
-                      updateTheme({
-                        colors: { ...theme.colors, primary: e.target.value },
-                      })
-                    }
+                    value={currentColors.primary}
+                    onChange={e => updateColor('primary', e.target.value)}
                   />
                 </div>
 
                 <div className="form-control">
                   <label className="label">
                     <span className="label-text">Secondary Color</span>
-                    <span className="label-text-alt">{theme.colors[mode]?.secondary}</span>
+                    <span className="label-text-alt">{currentColors.secondary}</span>
                   </label>
                   <input
                     type="color"
                     className="input input-bordered h-12"
-                    value={theme.colors[mode]?.secondary}
-                    onChange={e =>
-                      updateTheme({
-                        colors: { ...theme.colors, secondary: e.target.value },
-                      })
-                    }
+                    value={currentColors.secondary}
+                    onChange={e => updateColor('secondary', e.target.value)}
                   />
                 </div>
 
                 <div className="form-control">
                   <label className="label">
                     <span className="label-text">Accent Color</span>
-                    <span className="label-text-alt">{theme.colors[mode]?.accent}</span>
+                    <span className="label-text-alt">{currentColors.accent}</span>
                   </label>
                   <input
                     type="color"
                     className="input input-bordered h-12"
-                    value={theme.colors[mode]?.accent}
-                    onChange={e =>
-                      updateTheme({
-                        colors: { ...theme.colors, accent: e.target.value },
-                      })
-                    }
+                    value={currentColors.accent}
+                    onChange={e => updateColor('accent', e.target.value)}
                   />
                 </div>
               </div>
@@ -217,105 +284,20 @@ export function ThemeEditor() {
                       type="radio"
                       name="font"
                       className="radio radio-primary"
-                      checked={theme.typography?.fontFamily === font.class}
-                      onChange={() =>
-                        updateTheme({
-                          typography: { ...theme.typography, fontFamily: font.class },
-                        })
-                      }
+                      checked={currentTypography.fontFamily === font.name}
+                      onChange={() => updateTypography({ fontFamily: font.name })}
                     />
                     <div>
                       <div className="font-medium">{font.name}</div>
-                      <div className="text-sm text-base-content/60">{font.preview}</div>
+                      <div
+                        className="text-sm text-base-content/60"
+                        style={{ fontFamily: font.name }}
+                      >
+                        {font.preview}
+                      </div>
                     </div>
                   </label>
                 ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body">
-              <h4 className="card-title text-base">Font Sizes</h4>
-              <div className="space-y-4">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Base Size</span>
-                    <span className="label-text-alt">{theme.typography?.fontSize.base}</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="14"
-                    max="20"
-                    step="1"
-                    className="range range-primary"
-                    value={parseInt(theme.typography?.fontSize?.base)}
-                    onChange={e =>
-                      updateTheme({
-                        typography: {
-                          ...theme.typography,
-                          fontSize: { ...theme.typography?.fontSize, base: `${e.target.value}px` },
-                        },
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Line Height</span>
-                    <span className="label-text-alt">{theme.typography?.lineHeight}</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="1.2"
-                    max="2"
-                    step="0.1"
-                    className="range range-primary"
-                    value={theme.typography?.lineHeight}
-                    onChange={e =>
-                      updateTheme({
-                        typography: { ...theme.typography, lineHeight: parseFloat(e.target.value) },
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Effects Tab */}
-      {activeTab === 'effects' && (
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-4"
-        >
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body">
-              <h4 className="card-title text-base">Visual Effects</h4>
-              <div className="space-y-4">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Border Radius</span>
-                    <span className="label-text-alt">{theme.radius?.button}</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="20"
-                    step="1"
-                    className="range range-primary"
-                    value={(theme.radius?.button || '0').toString()}
-                    onChange={e =>
-                      updateTheme({
-                        radius: { ...theme.radius, button: `${e.target.value}px` },
-                      })
-                    }
-                  />
-                </div>
               </div>
             </div>
           </div>

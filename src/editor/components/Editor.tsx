@@ -56,13 +56,14 @@ function EditorContent() {
           {/* Page Parser Area */}
           <motion.div
             className="flex-1 bg-base-50 relative overflow-hidden"
-            layout
+            layout="position"
+            layoutDependency={[leftDrawerOpen, rightDrawerOpen, chatVisible, chatWidth]}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             style={{
               width: chatVisible ? `calc(100% - ${chatWidth}px)` : '100%',
             }}
           >
-            <div className="h-full p-4 overflow-auto">
+            <div className="h-full p-2 overflow-auto">
               <EnhancedPageParser />
             </div>
           </motion.div>

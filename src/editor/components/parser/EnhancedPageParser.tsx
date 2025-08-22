@@ -142,7 +142,7 @@ export function EnhancedPageParser() {
         <PageParser />
 
         {/* Editing Overlays */}
-        {renderEditingOverlays()}
+        {/* {renderEditingOverlays()} */}
       </div>
 
       {/* Mode Indicator */}

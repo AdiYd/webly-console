@@ -250,6 +250,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       chatWidth,
       hasUnsavedChanges,
       daisyTheme,
+      theme,
+      editingMode,
+      selectedSectionId,
     } = state;
     localStorage.setItem(
       'editorState',
@@ -260,6 +263,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         chatWidth,
         hasUnsavedChanges,
         daisyTheme,
+        editingMode,
+        selectedSectionId,
+        theme,
       })
     );
   }, [state]);

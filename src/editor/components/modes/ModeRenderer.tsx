@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useEditor } from '../../context/EditorContext';
 import { TextEditor } from '../modes/TextEditor';
 import { ImageEditor } from '../modes/ImageEditor';
-import { ThemeEditor } from '../modes/ThemeEditor2';
+import { ThemeEditor } from './ThemeEditor';
 import { LayoutEditor } from '../modes/LayoutEditor';
 import { AIEditor } from '../modes/AIEditor';
 import { Icon } from '@/components/ui/icon';

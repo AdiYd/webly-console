@@ -97,6 +97,20 @@ const exampleTheme3: WebsiteTheme = {
   },
 };
 
+export const fontOptions = [
+  { name: 'Inter', preview: 'Modern & Clean' },
+  { name: 'Montserrat', preview: 'Elegant & Professional' },
+  { name: 'Roboto', preview: 'Friendly & Readable' },
+  { name: 'Poppins', preview: 'Geometric & Versatile' },
+  { name: 'Playfair', preview: 'Classic & Timeless' },
+  { name: 'Lora', preview: 'Elegant & Readable' },
+  { name: 'Source Sans Pro', preview: 'Versatile & Neutral' },
+  { name: 'Oswald', preview: 'Bold & Impactful' },
+  { name: 'Raleway', preview: 'Elegant & Modern' },
+  { name: 'Nunito', preview: 'Friendly & Rounded' },
+  { name: 'Merriweather', preview: 'Classic & Readable' },
+];
+
 const getPageHtml = (
   page: WebsitePage,
   theme: Partial<WebsiteTheme>,
@@ -118,7 +132,16 @@ const getPageHtml = (
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${page.page_name}</title>
-        
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+          href="https://fonts.googleapis.com/css2?${fontOptions
+            .map(font => `family=${font.name}:wght@400;500;600;700`)
+            .join('&')}&display=swap"
+          rel="stylesheet"
+        />
+
         <!-- Load CSS files first -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" />
@@ -205,8 +228,6 @@ const PageParser = () => {
     actions: { setDaisyTheme },
   } = useEditor();
   const page = useMemo(() => ({ ...currentPage }), [currentPage]);
-  // const daisyTheme = useMemo(() => state.daisyTheme || 'webly-light', [state.daisyTheme]);
-  // const theme = useMemo(() => ({ ...state.theme }), [state.theme]);
 
   // Refs for the iframes
   const iframeRefs = [useRef<HTMLIFrameElement>(null), useRef<HTMLIFrameElement>(null)];
@@ -245,12 +266,7 @@ const PageParser = () => {
 
   return (
     <>
-      {editingMode === 'theme' && (
-        <ThemeSwitcher
-          daisyTheme={daisyTheme}
-          callback={(themeName: daisyThemeName) => setDaisyTheme(themeName)}
-        />
-      )}
+      {editingMode === 'theme' && <ThemeSwitcher />}
       <div className="w-full h-full rounded-lg overflow-hidden border border-zinc-400/10 shadow-lg">
         {/* Two iframes with absolute positioning for smooth transitions */}
         <div className="relative w-full min-h-screen">
@@ -276,21 +292,14 @@ const PageParser = () => {
   );
 };
 
-// DaisyUI theme switcher as a UI on top of the page
-interface ThemeSwitcherProps {
-  daisyTheme: daisyThemeName;
-  callback: (theme: daisyThemeName) => void;
-}
-
-const ThemeSwitcher = ({
-  daisyTheme = 'webly-light',
-  callback = () => {},
-}: ThemeSwitcherProps): JSX.Element => {
-  const [theme, setDaisyTheme] = useState(daisyTheme);
+const ThemeSwitcher = (): JSX.Element => {
+  const {
+    state: { daisyTheme },
+    actions: { setDaisyTheme },
+  } = useEditor();
 
   const handleThemeChange = (newTheme: daisyThemeName) => {
     setDaisyTheme(newTheme);
-    callback(newTheme);
   };
 
   return (
@@ -298,7 +307,7 @@ const ThemeSwitcher = ({
       {Object.entries(themeIconify).map(([key, icon]) => (
         <button
           key={key}
-          className={`btn btn-xs btn-square ${theme === key ? 'btn-primary' : 'btn-ghost'} ${
+          className={`btn btn-xs btn-square ${daisyTheme === key ? 'btn-primary' : 'btn-ghost'} ${
             ['webly-light', 'webly-dark'].includes(key) ? 'border border-base-300' : ''
           } tooltip tooltip-top`}
           data-tip={key}
