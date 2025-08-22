@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PageParser from '@/components/pageParser/pageParser';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
+import { stat } from 'fs';
 
 export function EnhancedPageParser() {
   const { state, actions } = useEditor();
@@ -136,7 +137,7 @@ export function EnhancedPageParser() {
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className={`relative ${state.screenMode === 'mobile' ? 'max-w-sm mx-auto' : ''}`}>
       {/* Page Parser Container */}
       <div ref={parserRef} className="relative">
         <PageParser />

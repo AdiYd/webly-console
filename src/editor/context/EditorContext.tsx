@@ -19,6 +19,7 @@ export interface EditorState {
   selectedSectionId: string | null;
   isEditing: boolean;
   hasUnsavedChanges: boolean;
+  screenMode: 'desktop' | 'tablet' | 'mobile';
 
   // UI state
   chatVisible: boolean;
@@ -42,6 +43,7 @@ type EditorAction =
   | { type: 'SET_THEME'; payload: Partial<WebsiteTheme> }
   | { type: 'SET_DAISY_THEME'; payload: daisyThemeName }
   | { type: 'SET_EDITING_MODE'; payload: EditingMode }
+  | { type: 'SET_SCREEN_MODE'; payload: 'desktop' | 'tablet' | 'mobile' }
   | { type: 'SET_SELECTED_SECTION'; payload: string | null }
   | { type: 'SET_IS_EDITING'; payload: boolean }
   | { type: 'SET_UNSAVED_CHANGES'; payload: boolean }
@@ -97,6 +99,7 @@ const initialState: EditorState = {
   theme: initialTheme,
   daisyTheme: 'webly-light',
   editingMode: 'preview',
+  screenMode: 'desktop',
   selectedSectionId: null,
   isEditing: false,
   hasUnsavedChanges: false,
@@ -138,6 +141,9 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 
     case 'SET_EDITING_MODE':
       return { ...state, editingMode: action.payload };
+
+    case 'SET_SCREEN_MODE':
+      return { ...state, screenMode: action.payload };
 
     case 'SET_SELECTED_SECTION':
       return { ...state, selectedSectionId: action.payload };
@@ -299,6 +305,7 @@ interface EditorContextType {
     setTheme: (theme: Partial<WebsiteTheme>) => void;
     setDaisyTheme: (theme: daisyThemeName) => void;
     setEditingMode: (mode: EditingMode) => void;
+    setScreenMode: (mode: 'desktop' | 'tablet' | 'mobile') => void;
     setSelectedSection: (sectionId: string | null) => void;
     setIsEditing: (editing: boolean) => void;
     setChatVisible: (visible: boolean) => void;
@@ -385,6 +392,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   const setEditingMode = useCallback((mode: EditingMode) => {
     dispatch({ type: 'SET_EDITING_MODE', payload: mode });
+  }, []);
+
+  const setScreenMode = useCallback((mode: 'desktop' | 'tablet' | 'mobile') => {
+    dispatch({ type: 'SET_SCREEN_MODE', payload: mode });
   }, []);
 
   const setSelectedSection = useCallback((sectionId: string | null) => {
@@ -500,6 +511,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     setTheme,
     setDaisyTheme,
     setEditingMode,
+    setScreenMode,
     setSelectedSection,
     setIsEditing,
     setChatVisible,

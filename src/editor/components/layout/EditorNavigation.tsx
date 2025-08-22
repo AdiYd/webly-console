@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor, EditingMode } from '../../context/EditorContext';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
-import BlurDecoratives from '@/components/layout/blurDecoratives';
 
 export function EditorNavigation() {
   const { state, actions } = useEditor();
@@ -90,7 +89,7 @@ export function EditorNavigation() {
           {/* Right Section - Actions */}
           <div className="flex items-center gap-2">
             {/* History Controls */}
-            <div className="join border border-zinc-400/40">
+            <div className="join border* border-zinc-400/40*">
               <button
                 className="btn btn-ghost btn-sm join-item"
                 onClick={actions.undo}
@@ -107,6 +106,27 @@ export function EditorNavigation() {
               </button>
             </div>
 
+            {/* View Controls (mobile/Tablet/Desktop) */}
+            <div className="join border border-zinc-400/40">
+              <button
+                onClick={() => actions.setScreenMode('desktop')}
+                className={`btn btn-ghost btn-sm join-item ${
+                  state.screenMode === 'desktop' ? 'btn-active' : ''
+                }`}
+                title="Desktop"
+              >
+                <Icon icon="streamline:screen-1-remix" className="text-sm" />
+              </button>
+              <button
+                onClick={() => actions.setScreenMode('mobile')}
+                className={`btn btn-ghost btn-sm join-item ${
+                  state.screenMode === 'mobile' ? 'btn-active' : ''
+                }`}
+                title="Mobile"
+              >
+                <Icon icon="radix-icons:mobile" className="text-sm" />
+              </button>
+            </div>
             {/* View Controls */}
             <div className="join border border-zinc-400/40">
               <button
@@ -121,7 +141,7 @@ export function EditorNavigation() {
                 onClick={() => actions.setChatVisible(!chatVisible)}
                 title="Toggle AI chat"
               >
-                <Icon icon="mdi:chat" className="text-lg" />
+                <Icon icon="carbon:ai" className="text-lg" />
               </button>
               <button
                 className={`btn btn-ghost btn-sm join-item ${rightDrawerOpen ? 'btn-active' : ''}`}

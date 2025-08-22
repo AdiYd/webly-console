@@ -220,7 +220,7 @@ const PageParser = () => {
   );
 };
 
-export const ThemeSwitcher = (): JSX.Element => {
+export const ThemeSwitcher = ({ ...props }): JSX.Element => {
   const {
     state: { daisyTheme },
     actions: { setDaisyTheme },
@@ -231,7 +231,10 @@ export const ThemeSwitcher = (): JSX.Element => {
   };
 
   return (
-    <div className="scrollbar-thin flex overflow-x-auto gap-4 mb-0.5 max-sm:overflow-x-auto justify-center items-center backdrop-blur-xl mx-auto rounded-lg z-10">
+    <div
+      {...props}
+      className="scrollbar-thin flex overflow-x-auto gap-4 mb-0.5 max-sm:overflow-x-auto justify-center items-center backdrop-blur-xl mx-auto rounded-lg z-10"
+    >
       {Object.entries(themeIconify).map(([key, icon]) => (
         <button
           key={key}

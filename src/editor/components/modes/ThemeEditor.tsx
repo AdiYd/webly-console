@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
 import { fontOptions, ThemeSwitcher } from '@/components/pageParser/pageParser';
+import ImageTooltip from '@/components/ui/tooltip/tooltip';
 
 const colorPresets = [
   {
@@ -171,7 +172,7 @@ export function ThemeEditor() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-6 overflow-x-hidden"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Theme Editor</h3>
@@ -238,9 +239,27 @@ export function ThemeEditor() {
           {/* Daisy Theme */}
           <div className="card bg-base-100/20 shadow-sm">
             <div className="card-body p-4">
-              <h4 className="card-title text-base">Themes (daisyUI)</h4>
-              <div className="*:overflow-hidden *:flex-wrap ">
-                <ThemeSwitcher />
+              <h4 className="card-title text-base">
+                Themes
+                <ImageTooltip
+                  src={'/daisyThemes.png'}
+                  alt="DaisyUI Themes"
+                  caption="Click to see all themes"
+                >
+                  (
+                  <a
+                    href="https://daisyui.com/docs/themes/?lang=en#list-of-themes"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    DaisyUI
+                  </a>
+                  )
+                </ImageTooltip>
+              </h4>
+              <div className=" *:flex-wrap p-1">
+                <ThemeSwitcher style={{ padding: '10px', overflow: 'visible' }} />
               </div>
             </div>
           </div>
