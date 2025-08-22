@@ -45,7 +45,9 @@ export function RightDrawer() {
             <h2 className="text-lg flex justify-between items-center font-semibold text-base-content">
               Edit
             </h2>
-            <p className="text-xs text-base-content/60 mt-1">{state.selectedSectionId}</p>
+            {state.editingMode !== 'theme' && (
+              <p className="text-xs text-base-content/60 mt-1">{state.selectedSectionId}</p>
+            )}
           </div>
           <Icon
             title="close menu"
@@ -90,7 +92,7 @@ export function RightDrawer() {
       )} */}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}

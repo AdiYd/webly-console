@@ -20,7 +20,7 @@ export function LeftSidebar() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-400/50">
+      <div className="p-4 border-b border-zinc-400/50 z-20 bg-base-100/65 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-base-content">Sections</h2>
           <div className="flex gap-2 items-center">

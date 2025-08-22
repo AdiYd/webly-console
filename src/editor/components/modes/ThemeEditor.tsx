@@ -158,8 +158,8 @@ export function ThemeEditor() {
 
   const TabButton = ({ id, label, icon }: { id: string; label: string; icon: string }) => (
     <button
-      className={`tab flex text-sm gap-2 items-center !rounded-t-3xl !rounded-b-none ${
-        activeTab === id ? 'tab-active' : ''
+      className={`tab flex text-sm gap-2 border-b items-center !rounded-t-3xl !rounded-b-none ${
+        activeTab === id ? 'tab-active !border-primary' : ''
       }`}
       onClick={() => setActiveTab(id as any)}
     >
@@ -174,16 +174,16 @@ export function ThemeEditor() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6 scrollbar-thin overflow-x-hidden"
     >
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Theme Editor</h3>
         <button className="btn btn-neutral btn-sm" onClick={() => actions.saveToHistory()}>
           <Icon icon="mdi:content-save" className="w-4 h-4 mr-1" />
           Save Theme
         </button>
-      </div>
+      </div> */}
 
       {/* Tabs */}
-      <div className="tabs bg-transparent tabs-boxed">
+      <div className="tabs bg-transparent tabs-bordered">
         <TabButton id="colors" label="Colors" icon="mdi:palette" />
         <TabButton id="typography" label="Typography" icon="mdi:format-text" />
       </div>

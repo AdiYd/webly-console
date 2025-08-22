@@ -41,7 +41,7 @@ export function EditorNavigation() {
   };
 
   return (
-    <nav className="bg-base-100/40 rounded-b-3xl shadow-md backdrop-blur-lg border-b border-zinc-400/40 sticky top-0 z-30">
+    <nav className="bg-base-200/40 rounded-b-3xl* shadow-md backdrop-blur-lg border-b border-zinc-400/40 sticky top-0 z-30">
       <div className="px-4 pt-1">
         <div className="flex items-center justify-between">
           {/* Left Section - Logo and Title */}
@@ -69,13 +69,13 @@ export function EditorNavigation() {
 
           {/* Center Section - Editing Modes */}
           <div className="flex relative -bottom-1 items-center">
-            <div className="tabs align-bottom bg-transparent tabs-sm* tabs-boxed p-1">
+            <div className="tabs align-bottom bg-transparent* tabs-sm* tabs-lifted p-1">
               {editingModes.map(mode => (
                 <button
                   key={mode.id}
                   onClick={() => actions.setEditingMode(mode.id)}
-                  className={`tab !rounded-t-3xl hover:border-b hover:border-secondary !rounded-b-none tab-sm gap-2 ${
-                    editingMode === mode.id ? 'tab-active' : ''
+                  className={`tab bg-transparent !rounded-t-3xl hover:border-b hover:border-secondary tab-sm gap-2 ${
+                    editingMode === mode.id ? 'tab-active text-accent*' : ''
                   }`}
                   title={mode.description}
                 >

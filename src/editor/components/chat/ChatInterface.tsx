@@ -101,7 +101,7 @@ export function ChatInterface() {
   return (
     <div className="h-full flex flex-col backdrop-blur-xl">
       {/* Header */}
-      <div className="p-4 pb-3 border-b border-zinc-400/40">
+      <div className="p-4 pb-3 border-b border-zinc-400/40 z-20 bg-base-100/65 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-primary flex items-center justify-center rounded-full w-8 h-8 relative mask mask-circle">
