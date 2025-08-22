@@ -12,7 +12,7 @@ const protectedRoutes = [
 ];
 
 // Define routes that are only for unauthenticated users
-const unProtectedRoutes = ['/auth/signin', '/auth/signup', '/auth/forgot-password'];
+const unProtectedRoutes = ['/auth/signin', '/auth/signup', '/auth/forgot-password', '/edit'];
 
 export async function middleware(request: NextResponse) {
   const session = await auth();
@@ -43,7 +43,9 @@ export async function middleware(request: NextResponse) {
     protectedRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
   ) {
     // Save the current URL to redirect back after login
-    const redirectUrl = new URL('/auth/signin', request.url);
+    // const redirectUrl = new URL('/auth/signin', request.url);
+    const redirectUrl = new URL(pathname, request.url);
+    console.log('Redirecting to:', redirectUrl);
     redirectUrl.searchParams.set('redirect', pathname + url.search);
 
     return NextResponse.redirect(redirectUrl);

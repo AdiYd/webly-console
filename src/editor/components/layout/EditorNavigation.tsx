@@ -1,0 +1,177 @@
+'use client';
+
+import { motion } from 'framer-motion';
+import { Icon } from '@/components/ui/icon';
+import { useEditor, EditingMode } from '../../context/EditorContext';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+
+export function EditorNavigation() {
+  const { state, actions } = useEditor();
+  const {
+    editingMode,
+    hasUnsavedChanges,
+    isSaving,
+    chatVisible,
+    leftDrawerOpen,
+    rightDrawerOpen,
+    currentPage,
+  } = state;
+
+  const editingModes: Array<{
+    id: EditingMode;
+    label: string;
+    icon: string;
+    description: string;
+  }> = [
+    { id: 'preview', label: 'Preview', icon: 'mdi:eye', description: 'Preview your website' },
+    { id: 'text', label: 'Text', icon: 'mdi:format-text', description: 'Edit text content' },
+    { id: 'image', label: 'Images', icon: 'mdi:image', description: 'Manage images and media' },
+    { id: 'theme', label: 'Theme', icon: 'mdi:palette', description: 'Customize colors and fonts' },
+    {
+      id: 'layout',
+      label: 'Layout',
+      icon: 'mdi:view-grid',
+      description: 'Adjust layout and spacing',
+    },
+    { id: 'ai', label: 'AI Edit', icon: 'mdi:robot', description: 'AI-powered editing' },
+  ];
+
+  const handleSave = async () => {
+    await actions.handleSave();
+  };
+
+  return (
+    <nav className="bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-30">
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Left Section - Logo and Title */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Icon icon="mdi:web" className="text-primary-content text-lg" />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-base-content">Webly Editor</h1>
+                <p className="text-xs text-base-content/60">{currentPage.page_name}</p>
+              </div>
+            </div>
+
+            {/* Status Indicator */}
+            {hasUnsavedChanges && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="w-2 h-2 bg-warning rounded-full"
+                title="Unsaved changes"
+              />
+            )}
+          </div>
+
+          {/* Center Section - Editing Modes */}
+          <div className="flex items-center">
+            <div className="tabs tabs-boxed bg-base-200 p-1">
+              {editingModes.map(mode => (
+                <button
+                  key={mode.id}
+                  onClick={() => actions.setEditingMode(mode.id)}
+                  className={`tab tab-sm gap-2 ${editingMode === mode.id ? 'tab-active' : ''}`}
+                  title={mode.description}
+                >
+                  <Icon icon={mode.icon} className="text-sm" />
+                  <span className="hidden md:inline">{mode.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Section - Actions */}
+          <div className="flex items-center gap-2">
+            {/* History Controls */}
+            <div className="join">
+              <button
+                className="btn btn-ghost btn-sm join-item"
+                onClick={actions.undo}
+                title="Undo (Ctrl+Z)"
+              >
+                <Icon icon="mdi:undo" className="text-lg" />
+              </button>
+              <button
+                className="btn btn-ghost btn-sm join-item"
+                onClick={actions.redo}
+                title="Redo (Ctrl+Shift+Z)"
+              >
+                <Icon icon="mdi:redo" className="text-lg" />
+              </button>
+            </div>
+
+            {/* View Controls */}
+            <div className="join">
+              <button
+                className={`btn btn-ghost btn-sm join-item ${leftDrawerOpen ? 'btn-active' : ''}`}
+                onClick={() => actions.setLeftDrawer(!leftDrawerOpen)}
+                title="Toggle left sidebar"
+              >
+                <Icon icon="mdi:dock-left" className="text-lg" />
+              </button>
+              <button
+                className={`btn btn-ghost btn-sm join-item ${chatVisible ? 'btn-active' : ''}`}
+                onClick={() => actions.setChatVisible(!chatVisible)}
+                title="Toggle AI chat"
+              >
+                <Icon icon="mdi:chat" className="text-lg" />
+              </button>
+              <button
+                className={`btn btn-ghost btn-sm join-item ${rightDrawerOpen ? 'btn-active' : ''}`}
+                onClick={() => actions.setRightDrawer(!rightDrawerOpen)}
+                title="Toggle right panel"
+              >
+                <Icon icon="mdi:dock-right" className="text-lg" />
+              </button>
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSave}
+              disabled={isSaving || !hasUnsavedChanges}
+              className={`btn btn-primary btn-sm gap-2 ${isSaving ? 'loading' : ''}`}
+              title="Save changes (Ctrl+S)"
+            >
+              {!isSaving && <Icon icon="mdi:content-save" className="text-lg" />}
+              <span>Save</span>
+            </button>
+            <ThemeToggle />
+            {/* Options Menu */}
+            <div className="dropdown dropdown-end">
+              <div tabIndex={0} role="button" className="btn btn-ghost btn-sm btn-circle">
+                <Icon icon="mdi:dots-vertical" className="text-lg" />
+              </div>
+              <ul
+                tabIndex={0}
+                className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
+              >
+                <li>
+                  <a onClick={() => console.log('Export website')}>
+                    <Icon icon="mdi:download" />
+                    Export Website
+                  </a>
+                </li>
+                <li>
+                  <a onClick={() => console.log('Preview in new tab')}>
+                    <Icon icon="mdi:open-in-new" />
+                    Preview in New Tab
+                  </a>
+                </li>
+                <li>
+                  <a onClick={() => console.log('Settings')}>
+                    <Icon icon="mdi:cog" />
+                    Settings
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}

@@ -72,6 +72,7 @@ export function getAdminFirebase(): AdminFirebase {
     // Initialize the app with the credentials
     const newApp = initializeApp({
       credential: cert(serviceAccount),
+      projectId: serviceAccount.project_id, // Ensure project ID is set
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
 

@@ -7,12 +7,12 @@ import { useBreakpoint } from '@/hooks/use-screen';
 // Define the props for the ChatLayoutWrapper component
 interface ChatLayoutWrapperProps {
   chatComponent: React.ReactNode; // Chat component to be rendered
-  mainContent: React.ReactNode; // Main content component to be rendered
   initialChatState?: {
     isFullscreen?: boolean;
     isMinimized?: boolean;
     isPinned?: boolean;
   };
+  children: React.ReactNode; // Children to be rendered inside the wrapper
 }
 
 // Define the state interface for better organization
@@ -63,8 +63,8 @@ const DEFAULT_UI_STATE: ChatUIState = {
 
 export default function ChatLayoutWrapper({
   chatComponent,
-  mainContent,
   initialChatState,
+  children,
 }: ChatLayoutWrapperProps) {
   // Initialize chatUI state with default values merged with initialChatState
   const [chatUI, setChatUI] = useState<ChatUIState>(() => {
@@ -781,7 +781,7 @@ export default function ChatLayoutWrapper({
             style={chatUI.display.isFullscreen || isMobile ? { display: 'none' } : {}}
           >
             <div className="card rounded-md h-full bg-base-100* z-20 overflow-auto">
-              <div className="h-full">{mainContent}</div>
+              <div className="h-full">{children}</div>
             </div>
           </div>
         </>

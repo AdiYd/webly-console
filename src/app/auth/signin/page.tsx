@@ -110,7 +110,7 @@ export default function SignIn() {
     try {
       // Authenticate with Google through Firebase
       const userCredential = await googleAuth();
-
+      console.log('Google sign-in successful:', userCredential);
       // Complete authentication with NextAuth
       await completeNextAuthSignIn(userCredential, {
         provider: 'google',
@@ -121,9 +121,9 @@ export default function SignIn() {
 
       // Router redirect will happen after NextAuth redirect
     } catch (error: any) {
-      const errorCode = error.code || 'default';
+      const errorCode = error?.code || 'default';
+      console.error('Google sign-in error:', error?.message);
       setError(getAuthErrorMessage(errorCode));
-      console.error('Google sign-in error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +173,7 @@ export default function SignIn() {
         <div className="space-y-4">
           <button
             type="button"
-            className="btn btn-outline w-full flex items-center justify-center gap-2"
+            className="btn bg-base-content text-base-100 hover:bg-base-content/80 w-full flex items-center justify-center gap-2"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
           >

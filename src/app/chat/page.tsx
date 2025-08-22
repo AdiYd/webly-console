@@ -5,10 +5,15 @@ import ChatInterface from '@/components/ai/ChatInterface';
 import { useBreakpoint } from '@/hooks/use-screen';
 import { useRouter } from 'next/navigation';
 import ChatLayoutWrapper from '@/components/layout/ChatLayoutWrapper';
+import PageParser from '@/components/pageParser/pageParser';
+import { useWebsite } from '@/context/website-provider';
+import { exampleTheme } from '@/components/pageParser/utils';
+import { examplePage } from '@/types/mock';
 
 export default function ChatPage() {
   const [isMounted, setIsMounted] = useState(false);
   const navigate = useRouter();
+  const { websites } = useWebsite();
   const { isMobile } = useBreakpoint();
 
   useEffect(() => {
@@ -28,20 +33,15 @@ export default function ChatPage() {
   return (
     <ChatLayoutWrapper
       chatComponent={<ChatInterface />}
-      mainContent={
-        <div className="p-4">
-          <h1 className="text-2xl font-bold mb-4">Welcome to Webly AI Chat</h1>
-          <p className="text-base-content/70">
-            Use the chat interface to interact with AI. You can resize, move, minimize, and toggle
-            fullscreen mode.
-          </p>
-        </div>
-      }
       initialChatState={{
         isFullscreen: true,
         isMinimized: false,
         isPinned: true,
       }}
-    />
+    >
+      <div className="p-0 flex-1 overflow-hidden h-full">
+        <PageParser />
+      </div>
+    </ChatLayoutWrapper>
   );
 }

@@ -8,14 +8,13 @@ import { useSession, signOut } from 'next-auth/react';
 import { Icon } from '@iconify/react';
 import { useBreakpoint } from '@/hooks/use-screen';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 
 interface NavLinkProps {
   href: string;
   children: React.ReactNode;
   className?: string;
 }
-
-
 
 function NavLink({ href, children, className }: NavLinkProps) {
   const pathname = usePathname();
@@ -77,7 +76,13 @@ export function Navigation() {
         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
       >
         <div className="mask mask-circle w-8 ring ring-offset-2 ring-primary ring-offset-base-100 hover:opacity-85">
-          <img loading="eager" src={userData.image} alt={userData.name || 'User profile'} />
+          <Image
+            loading="eager"
+            width={32}
+            height={32}
+            src={userData.image}
+            alt={userData.name || 'User profile'}
+          />
         </div>
       </div>
     );
@@ -89,7 +94,13 @@ export function Navigation() {
           <Link href="/account" className="flex items-center gap-6">
             <div className="avatar">
               <div className="w-12 mask mask-squircle">
-                <img loading="eager" src={userData.image} alt={userData.name} />
+                <Image
+                  loading="eager"
+                  src={userData.image}
+                  alt={userData.name}
+                  width={48}
+                  height={48}
+                />
               </div>
             </div>
             <div>

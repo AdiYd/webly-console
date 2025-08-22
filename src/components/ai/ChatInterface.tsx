@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import useBoolean from '@/hooks/use-boolean';
 import { clientLogger } from '@/utils/logger';
 import { getRandomTheme, useTheme } from '@/context/theme-provider';
+import Image from 'next/image';
 
 // Type definitions
 interface ChatInterfaceProps {
@@ -595,9 +596,9 @@ export default function ChatInterface({
         className={`chat ${isUser ? 'chat-end' : 'chat-start'}`}
       >
         <div className="chat-image avatar">
-          <div className="w-10 rounded-full">
+          <div className="w-6 rounded-full">
             {isUser ? (
-              <img src={userImage} />
+              <Image width={40} height={40} alt={userName} src={userImage} />
             ) : (
               <div className="bg-primary flex items-center justify-center h-full">
                 <div className="circle-bg" />

@@ -127,7 +127,7 @@ export default function SignUp() {
         <div className="space-y-4">
           <button
             type="button"
-            className="btn btn-outline w-full flex items-center justify-center gap-2"
+            className="btn bg-base-content text-base-100 hover:bg-base-content/80 w-full flex items-center justify-center gap-2"
             onClick={handleGoogleSignUp}
             disabled={isLoading}
           >

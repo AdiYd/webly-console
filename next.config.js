@@ -3,7 +3,23 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-
+  // Add GOOGLE IMAGES REMOTE PATTERNS
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
   // Add transpilePackages to include problematic packages
   transpilePackages: ['undici', '@firebase/auth', 'firebase'],
 

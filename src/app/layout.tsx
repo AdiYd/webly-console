@@ -9,6 +9,7 @@ import Header from '@/components/layout/header';
 import BlurDecoratives from '@/components/layout/blurDecoratives';
 import { SessionProvider } from 'next-auth/react';
 import { clientLogger } from '@/utils/logger';
+import { WebsiteProvider } from '@/context/website-provider';
 
 const robotoSans = Roboto({
   subsets: ['latin'],
@@ -29,7 +30,7 @@ export default async function RootLayout({
 }>) {
   // Get the session server-side
   const session = await auth();
-  clientLogger.info('Session:', 'This is session:', session);
+  // clientLogger.info('Session:', 'This is session:', session);
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -88,12 +89,14 @@ export default async function RootLayout({
       >
         <SessionProvider refetchInterval={0} refetchOnWindowFocus={false} session={session}>
           <ThemeProvider defaultTheme="system" storageKey="theme">
-            {/* <OrganizationContextProvider> */}
-            <BlurDecoratives />
-            <Header />
-            <main className="flex-1 z-10  max-h-full flex flex-col">{children}</main>
-            <Footer />
-            {/* </OrganizationContextProvider> */}
+            <WebsiteProvider>
+              {/* <OrganizationContextProvider> */}
+              <BlurDecoratives />
+              {/* <Header /> */}
+              <main className="flex-1 z-10  max-h-full flex flex-col">{children}</main>
+              {/* <Footer /> */}
+              {/* </OrganizationContextProvider> */}
+            </WebsiteProvider>
           </ThemeProvider>
         </SessionProvider>
       </body>

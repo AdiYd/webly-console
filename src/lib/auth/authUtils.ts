@@ -5,9 +5,10 @@ import {
   signInWithPopup,
   UserCredential,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/firebase-client';
 import { signIn } from 'next-auth/react';
+import { manageUserInFirestore } from '../firebase/functions/utils';
 
 // Error message maps for user-friendly error feedback
 export const authErrorMessages = {
@@ -36,37 +37,6 @@ export function getAuthErrorMessage(errorCode: string): string {
 export function validateEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
-}
-
-// Store or update user data in Firestore
-export async function manageUserInFirestore(
-  user: any,
-  additionalData: Record<string, any> = {}
-): Promise<void> {
-  try {
-    const userDocRef = doc(db, 'users', user.email || user.uid);
-    const userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists()) {
-      // Create new user document
-      await setDoc(userDocRef, {
-        name: user.displayName || additionalData.name || 'User',
-        email: user.email,
-        role: additionalData.role || 'Trial',
-        image: user.photoURL || additionalData.image || '',
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-        provider: additionalData.provider || 'credentials',
-        ...additionalData,
-      });
-    } else {
-      // Update existing user (could be implemented if needed)
-      // Currently not updating existing users to avoid overwriting data
-    }
-  } catch (error) {
-    console.error('Error managing user in Firestore:', error);
-    throw error;
-  }
 }
 
 // Handle Email/Password authentication
@@ -98,6 +68,7 @@ export async function emailPasswordAuth(
 export async function googleAuth(): Promise<UserCredential> {
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
+  console.log('Google sign-in successful:', result);
 
   // Store user in Firestore
   await manageUserInFirestore(result.user, {
@@ -131,7 +102,7 @@ export async function completeNextAuthSignIn(
 
     // Add Firestore data if available
     if (userDoc.exists()) {
-      const firestoreData = userDoc.data();
+      const firestoreData = userDoc.data() || {};
       userData = {
         ...userData,
         name: firestoreData.name || userData.name,
