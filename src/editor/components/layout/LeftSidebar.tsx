@@ -23,24 +23,27 @@ export function LeftSidebar() {
       <div className="p-4 border-b border-base-300">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-base-content">Sections</h2>
-          <button
-            onClick={() => actions.setLeftDrawer(false)}
-            className="btn btn-ghost btn-sm"
-            title="Close sidebar"
-          />
-          <button
-            onClick={addNewSection}
-            className="btn btn-primary btn-sm btn-circle"
-            title="Add new section"
-          >
-            <Icon icon="mdi:plus" className="text-lg" />
-          </button>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={addNewSection}
+              className="btn btn-primary btn-sm btn-circle"
+              title="Add new section"
+            >
+              <Icon icon="mdi:plus" className="text-lg" />
+            </button>
+            <Icon
+              icon="mdi:menu-close"
+              onClick={() => actions.setLeftDrawer(false)}
+              className="btn btn-ghost btn-xs rotate-180"
+              title="Close menu"
+            />
+          </div>
         </div>
         <p className="text-sm text-base-content/60 mt-1">{currentPage.sections.length} sections</p>
       </div>
 
       {/* Sections List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-1">
         <div className="space-y-2">
           {currentPage.sections.map((section, index) => (
             <motion.div
@@ -81,7 +84,6 @@ export function LeftSidebar() {
 
                     {/* Section Stats */}
                     <div className="flex items-center gap-2 mt-2">
-                      <div className="badge badge-ghost badge-xs">#{index + 1}</div>
                       {section.src?.html && <div className="badge badge-ghost badge-xs">HTML</div>}
                       {section.src?.js && <div className="badge badge-ghost badge-xs">JS</div>}
                       {section.src?.css && <div className="badge badge-ghost badge-xs">CSS</div>}
@@ -90,12 +92,18 @@ export function LeftSidebar() {
 
                   {/* Actions */}
                   <div className="dropdown dropdown-end">
-                    <div tabIndex={0} role="button" className="btn btn-ghost btn-xs btn-square">
+                    <div
+                      tabIndex={0}
+                      role="button"
+                      className="btn btn-ghost btn-xs btn-square"
+                      onClick={e => e.stopPropagation()} // Prevent triggering the card click
+                    >
                       <Icon icon="mdi:dots-vertical" className="text-xs" />
                     </div>
                     <ul
                       tabIndex={0}
-                      className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-48"
+                      className="dropdown-content z-[999] menu p-2 shadow bg-base-100 rounded-box w-48"
+                      onClick={e => e.stopPropagation()} // Prevent triggering the card click
                     >
                       <li>
                         <a onClick={() => console.log('Edit section', section.id)}>
@@ -104,19 +112,23 @@ export function LeftSidebar() {
                         </a>
                       </li>
                       <li>
-                        <a onClick={() => console.log('Duplicate section', section.id)}>
+                        <a onClick={() => actions.duplicateSection(section.id as string)}>
                           <Icon icon="mdi:content-copy" />
                           Duplicate
                         </a>
                       </li>
                       <li>
-                        <a onClick={() => console.log('Move up', section.id)}>
+                        <a
+                          onClick={() => {
+                            actions.moveSection(section.id as string, 'up');
+                          }}
+                        >
                           <Icon icon="mdi:arrow-up" />
                           Move Up
                         </a>
                       </li>
                       <li>
-                        <a onClick={() => console.log('Move down', section.id)}>
+                        <a onClick={() => actions.moveSection(section.id as string, 'down')}>
                           <Icon icon="mdi:arrow-down" />
                           Move Down
                         </a>

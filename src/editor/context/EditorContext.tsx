@@ -54,7 +54,9 @@ type EditorAction =
   | { type: 'SAVE_TO_HISTORY' }
   | { type: 'UNDO' }
   | { type: 'REDO' }
-  | { type: 'UPDATE_SECTION'; payload: { sectionId: string; section: any } };
+  | { type: 'UPDATE_SECTION'; payload: { sectionId: string; section: any } }
+  | { type: 'MOVE_SECTION'; payload: { sectionId: string; direction: 'up' | 'down' } }
+  | { type: 'DUPLICATE_SECTION'; payload: { sectionId: string } };
 
 const initialTheme: Partial<WebsiteTheme> = {
   colors: {
@@ -192,6 +194,52 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         currentPage: { ...state.currentPage, sections: updatedSections },
         hasUnsavedChanges: true,
       };
+    case 'MOVE_SECTION':
+      const { sectionId, direction } = action.payload;
+      const sections = state.currentPage.sections;
+      const index = sections.findIndex(section => section.id === sectionId);
+      if (index !== -1) {
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex >= 0 && newIndex < sections.length) {
+          const updatedSections = [...sections];
+          [updatedSections[index], updatedSections[newIndex]] = [
+            updatedSections[newIndex],
+            updatedSections[index],
+          ];
+          return {
+            ...state,
+            currentPage: { ...state.currentPage, sections: updatedSections },
+            hasUnsavedChanges: true,
+          };
+        }
+      }
+      return state;
+
+    case 'DUPLICATE_SECTION':
+      const sectionToDuplicate = state.currentPage.sections.find(
+        section => section.id === action.payload.sectionId
+      );
+      const sectionIndex = state.currentPage.sections.findIndex(
+        section => section.id === action.payload.sectionId
+      );
+      const generateUniqueId = () =>
+        `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      if (sectionToDuplicate) {
+        const duplicatedSection = { ...sectionToDuplicate, id: generateUniqueId() };
+        return {
+          ...state,
+          currentPage: {
+            ...state.currentPage,
+            sections: [
+              ...state.currentPage.sections.slice(0, sectionIndex + 1),
+              duplicatedSection,
+              ...state.currentPage.sections.slice(sectionIndex + 1),
+            ],
+          },
+          hasUnsavedChanges: true,
+        };
+      }
+      return state;
 
     default:
       return state;
@@ -230,6 +278,8 @@ interface EditorContextType {
     setRightDrawer: (open: boolean) => void;
     setLeftDrawer: (open: boolean) => void;
     updateSection: (sectionId: string, section: any) => void;
+    moveSection: (sectionId: string, direction: 'up' | 'down') => void;
+    duplicateSection: (sectionId: string) => void;
     saveToHistory: () => void;
     undo: () => void;
     redo: () => void;
@@ -323,6 +373,14 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_SECTION', payload: { sectionId, section } });
   }, []);
 
+  const moveSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
+    dispatch({ type: 'MOVE_SECTION', payload: { sectionId, direction } });
+  }, []);
+
+  const duplicateSection = useCallback((sectionId: string) => {
+    dispatch({ type: 'DUPLICATE_SECTION', payload: { sectionId } });
+  }, []);
+
   const saveToHistory = useCallback(() => {
     dispatch({ type: 'SAVE_TO_HISTORY' });
   }, []);
@@ -399,6 +457,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     setRightDrawer,
     setLeftDrawer,
     updateSection,
+    moveSection,
+    duplicateSection,
     saveToHistory,
     undo,
     redo,

@@ -165,7 +165,7 @@ export function EnhancedPageParser() {
       </AnimatePresence> */}
 
       {/* Quick Actions */}
-      <AnimatePresence>
+      {/* <AnimatePresence>
         {selectedSectionId && editingMode !== 'preview' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -204,7 +204,7 @@ export function EnhancedPageParser() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence> */}
 
       {/* Loading Overlay */}
       {state.isLoading && (

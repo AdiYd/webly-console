@@ -33,7 +33,7 @@ export function EditorNavigation() {
       icon: 'mdi:view-grid',
       description: 'Adjust layout and spacing',
     },
-    { id: 'ai', label: 'AI Edit', icon: 'mdi:robot', description: 'AI-powered editing' },
+    // { id: 'ai', label: 'AI Edit', icon: 'mdi:robot', description: 'AI-powered editing' },
   ];
 
   const handleSave = async () => {
@@ -42,7 +42,7 @@ export function EditorNavigation() {
 
   return (
     <nav className="bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-30">
-      <div className="px-4 py-3">
+      <div className="px-4 py-1">
         <div className="flex items-center justify-between">
           {/* Left Section - Logo and Title */}
           <div className="flex items-center gap-4">
@@ -52,7 +52,7 @@ export function EditorNavigation() {
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-base-content">Webly Editor</h1>
-                <p className="text-xs text-base-content/60">{currentPage.page_name}</p>
+                {/* <p className="text-xs text-base-content/60">{currentPage.page_name}</p> */}
               </div>
             </div>
 
@@ -69,7 +69,7 @@ export function EditorNavigation() {
 
           {/* Center Section - Editing Modes */}
           <div className="flex items-center">
-            <div className="tabs tabs-boxed bg-base-200 p-1">
+            <div className="tabs tabs-sm* tabs-boxed p-1">
               {editingModes.map(mode => (
                 <button
                   key={mode.id}

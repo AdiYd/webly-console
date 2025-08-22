@@ -5,7 +5,6 @@ import { Icon } from '@iconify/react';
 import { fallbackPage, themeIconify } from './utils';
 import { examplePage, Website, WebsitePage, WebsiteTheme } from '@/types/mock';
 import { useEditor } from '@/editor/context/EditorContext';
-import { stat } from 'fs';
 
 const exampleTheme: WebsiteTheme = {
   colors: {
@@ -225,7 +224,6 @@ const PageParser = () => {
   const [iframeContents, setIframeContents] = useState(['', '']);
   const {
     state: { theme, currentPage, daisyTheme, selectedSectionId, editingMode },
-    actions: { setDaisyTheme },
   } = useEditor();
   const page = useMemo(() => ({ ...currentPage }), [currentPage]);
 
@@ -252,7 +250,22 @@ const PageParser = () => {
 
       iframe.addEventListener('load', handleLoad);
     }
-  }, [daisyTheme, page, theme]);
+  }, [daisyTheme, page, theme.colors, theme.radius]);
+
+  // Change typography font
+
+  useEffect(() => {
+    const iframe = iframeRefs[activeIframeIndex].current;
+    if (iframe) {
+      const style = document.createElement('style');
+      style.textContent = `
+        body {
+          font-family: "${theme?.typography?.fontFamily || 'Roboto'}", system-ui, sans-serif;
+        }
+      `;
+      iframe.contentDocument?.head.appendChild(style);
+    }
+  }, [activeIframeIndex, theme?.typography?.fontFamily]);
 
   useEffect(() => {
     const iframe = iframeRefs[activeIframeIndex].current;
@@ -267,7 +280,7 @@ const PageParser = () => {
   return (
     <>
       {editingMode === 'theme' && <ThemeSwitcher />}
-      <div className="w-full h-full rounded-lg overflow-hidden border border-zinc-400/10 shadow-lg">
+      <div className="w-full h-[90vh] rounded-lg overflow-hidden border border-zinc-400/10 shadow-lg">
         {/* Two iframes with absolute positioning for smooth transitions */}
         <div className="relative w-full min-h-screen">
           {[0, 1].map(index => (
@@ -277,7 +290,7 @@ const PageParser = () => {
               title={`${page.page_name}-${index}`}
               sandbox="allow-scripts allow-same-origin"
               srcDoc={iframeContents[index]}
-              className={`absolute bg-white top-0 left-0 w-full min-h-[85vh] transition-opacity duration-300`}
+              className={`absolute scroll-smooth top-0 left-0 w-full min-h-[stretch] transition-opacity duration-300`}
               style={{
                 opacity: activeIframeIndex === index ? 1 : 0,
                 zIndex: activeIframeIndex === index ? 10 : 1,
@@ -292,7 +305,7 @@ const PageParser = () => {
   );
 };
 
-const ThemeSwitcher = (): JSX.Element => {
+export const ThemeSwitcher = (): JSX.Element => {
   const {
     state: { daisyTheme },
     actions: { setDaisyTheme },

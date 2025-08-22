@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
-import { fontOptions } from '@/components/pageParser/pageParser';
+import { fontOptions, ThemeSwitcher } from '@/components/pageParser/pageParser';
 
 const colorPresets = [
   {
@@ -218,6 +218,15 @@ export function ThemeEditor() {
             </div>
           </div>
 
+          {/* Daisy Theme */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body">
+              <h4 className="card-title text-base">Themes</h4>
+              <div className="*:overflow-hidden *:flex-wrap ">
+                <ThemeSwitcher />
+              </div>
+            </div>
+          </div>
           {/* Custom Colors */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body">

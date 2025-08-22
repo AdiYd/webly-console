@@ -27,9 +27,9 @@ export function RightDrawer() {
         <h2 className="text-lg flex justify-between items-center font-semibold text-base-content">
           Inspector
           <Icon
-            title="close drawer"
+            title="close menu"
             className="btn btn-ghost btn-sm"
-            icon="mdi:close"
+            icon="mdi:menu-close"
             onClick={() => setRightDrawer(false)}
           />
         </h2>
