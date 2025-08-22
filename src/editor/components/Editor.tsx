@@ -8,6 +8,7 @@ import { RightDrawer } from './layout/RightDrawer';
 import { ChatInterface } from './chat/ChatInterface';
 import { EnhancedPageParser } from './parser/EnhancedPageParser';
 import { ResizeHandle } from './layout/ResizeHandle';
+import BlurDecoratives from '@/components/layout/blurDecoratives';
 
 interface EditorProps {
   className?: string;
@@ -31,6 +32,7 @@ function EditorContent() {
 
   return (
     <div className="flex flex-col h-screen bg-base-100 overflow-hidden">
+      <BlurDecoratives />
       {/* Top Navigation */}
       <EditorNavigation />
 
@@ -44,7 +46,7 @@ function EditorContent() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -300, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-80 bg-base-200 border-r border-base-300 shadow-lg z-20"
+              className="w-80 bg-base-200/20 border-r border-base-300 shadow-lg z-20"
             >
               <LeftSidebar />
             </motion.div>
@@ -85,7 +87,7 @@ function EditorContent() {
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: chatWidth, opacity: 0 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="bg-base-100 border-l border-base-300 shadow-lg flex flex-col"
+                className="bg-base-100/20 border-l border-zinc-400/40 shadow-lg flex flex-col z-10"
                 style={{ width: chatWidth, minWidth: 300, maxWidth: 600 }}
               >
                 <ChatInterface />
@@ -102,7 +104,7 @@ function EditorContent() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 300, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-80 bg-base-200 border-l border-base-300 shadow-lg z-20"
+              className="w-80 bg-base-200/20 backdrop-blur-lg border-l border-base-300 shadow-lg z-20"
             >
               <RightDrawer />
             </motion.div>

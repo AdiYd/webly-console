@@ -169,3 +169,11 @@
   --bc: 97.6477% 0.0216 264.436;
   --p: 90.6477% 0.216 140;
 }
+
+
+/* Class to make small scroller height and width */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 100, 100, 0.5) transparent;
+}
+

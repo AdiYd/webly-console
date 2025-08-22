@@ -18,9 +18,9 @@ export function LeftSidebar() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-base-200">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-base-300">
+      <div className="p-4 border-b border-zinc-400/50">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-base-content">Sections</h2>
           <div className="flex gap-2 items-center">
@@ -32,9 +32,9 @@ export function LeftSidebar() {
               <Icon icon="mdi:plus" className="text-lg" />
             </button>
             <Icon
-              icon="mdi:menu-close"
+              icon="mingcute:arrow-left-fill"
               onClick={() => actions.setLeftDrawer(false)}
-              className="btn btn-ghost btn-xs rotate-180"
+              className="btn btn-neutral btn-xs"
               title="Close menu"
             />
           </div>
@@ -44,7 +44,7 @@ export function LeftSidebar() {
 
       {/* Sections List */}
       <div className="flex-1 overflow-y-auto p-1">
-        <div className="space-y-2">
+        <div className="space-y-2 mt-1">
           {currentPage.sections.map((section, index) => (
             <motion.div
               key={section.id || index}
@@ -52,7 +52,7 @@ export function LeftSidebar() {
               layout
               className={`card card-compact relative cursor-pointer transition-all duration-200 ${
                 selectedSectionId === section.id
-                  ? '!bg-primary/10 !border-primary/50 !border-2'
+                  ? '!bg-primary/10 !border-primary/50'
                   : 'bg-base-100 hover:bg-base-300/50'
               }`}
               onClick={() => handleSectionSelect(section.id || `section-${index}`)}
@@ -137,13 +137,13 @@ export function LeftSidebar() {
                         </li>
                         <div className="divider my-1"></div>
                         <li>
-                          <a
-                            onClick={() => console.log('Delete section', section.id)}
+                          <button
+                            onClick={() => actions.deleteSection(section.id as string)}
                             className="text-error"
                           >
                             <Icon icon="mdi:delete" />
                             Delete
-                          </a>
+                          </button>
                         </li>
                       </ul>
                     </div>

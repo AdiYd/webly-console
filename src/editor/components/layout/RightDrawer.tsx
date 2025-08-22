@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
 import { ModeRenderer } from '../modes/ModeRenderer';
-import { set } from 'zod';
 
 export function RightDrawer() {
   const {
@@ -13,6 +12,16 @@ export function RightDrawer() {
     actions: { setRightDrawer },
   } = useEditor();
   const [activeTab, setActiveTab] = useState<'editor' | 'properties' | 'assets'>('editor');
+  const [hideTabs, setHideTabs] = useState(false);
+  useEffect(() => {
+    if (['theme'].includes(state.editingMode)) {
+      setActiveTab('editor');
+      setHideTabs(true);
+    } else {
+      setActiveTab('editor');
+      setHideTabs(false);
+    }
+  }, [state.editingMode]);
 
   const tabs = [
     { id: 'editor' as const, label: 'Editor', icon: 'mdi:pencil' },
@@ -21,36 +30,40 @@ export function RightDrawer() {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-base-200">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-base-300">
+      <div className="p-4 border-b border-zinc-400/50">
         <h2 className="text-lg flex justify-between items-center font-semibold text-base-content">
-          Inspector
+          Edit
           <Icon
             title="close menu"
-            className="btn btn-ghost btn-sm"
-            icon="mdi:menu-close"
+            className="btn btn-neutral btn-xs"
+            icon="mingcute:arrow-right-fill"
             onClick={() => setRightDrawer(false)}
           />
         </h2>
-        <p className="text-sm text-base-content/60 mt-1">
-          {state.selectedSectionId ? 'Section selected' : 'No selection'}
-        </p>
+        {!hideTabs && (
+          <p className="text-sm text-base-content/60 mt-1">
+            {state.selectedSectionId ? 'Section selected' : 'No selection'}
+          </p>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="tabs tabs-bordered px-4">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`tab gap-2 ${activeTab === tab.id ? 'tab-active' : ''}`}
-          >
-            <Icon icon={tab.icon} className="text-sm" />
-            <span className="text-xs">{tab.label}</span>
-          </button>
-        ))}
-      </div>
+      {!hideTabs && (
+        <div className="tabs tabs-bordered px-4">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`tab gap-2 ${activeTab === tab.id ? 'tab-active' : ''}`}
+            >
+              <Icon icon={tab.icon} className="text-sm" />
+              <span className="text-xs">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
@@ -59,7 +72,7 @@ export function RightDrawer() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
-          className="p-4"
+          className="p-2 pt-4"
         >
           {activeTab === 'editor' && <ModeRenderer />}
           {activeTab === 'properties' && <PropertiesPanel />}
@@ -234,10 +247,10 @@ function AssetsPanel() {
           <Icon icon="mdi:emoticon" />
           Icons ({website.resources?.icons?.filter(icon => icon.source === 'Iconify')?.length || 0})
         </h3>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-2">
           {website.resources?.icons
             ?.filter(icon => icon.source === 'Iconify')
-            .slice(0, expand.icons ? -1 : 4)
+            .slice(0, expand.icons ? -1 : 5)
             .map((icon, index) => (
               <div
                 key={index}

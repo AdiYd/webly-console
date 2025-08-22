@@ -1,8 +1,6 @@
 import { WebsiteTheme } from '@/types/schemaOld';
 
 export const themeIconify = {
-  'webly-light': 'mdi:lightbulb-on',
-  'webly-dark': 'mdi:moon-waning-crescent',
   light: 'ph:sun-bold',
   dark: 'ph:moon-bold',
   system: 'ph:desktop-bold',
@@ -15,6 +13,8 @@ export const themeIconify = {
   valentine: 'mdi:heart',
   halloween: 'mdi:halloween',
   garden: 'mdi:flower',
+  'webly-light': 'mdi:lightbulb-on',
+  'webly-dark': 'mdi:moon-waning-crescent',
   forest: 'mdi:pine-tree',
   aqua: 'mdi:water',
   lofi: 'mdi:fantasy',

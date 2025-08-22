@@ -99,9 +99,9 @@ export function ChatInterface() {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-base-100">
+    <div className="h-full flex flex-col bg-base-100/20 backdrop-blur-lg">
       {/* Header */}
-      <div className="p-4 border-b border-base-300 bg-base-200">
+      <div className="p-4 border-b border-zinc-400/40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
@@ -203,10 +203,10 @@ export function ChatInterface() {
               <button
                 key={index}
                 onClick={action.action}
-                className="btn btn-ghost btn-sm justify-start gap-2 text-left"
+                className="badge badge-sm justify-center h-fit text-left gap-2"
               >
                 <Icon icon={action.icon} className="text-base" />
-                <span className="text-xs truncate">{action.label}</span>
+                <span className="text-xs truncate text-wrap">{action.label}</span>
               </button>
             ))}
           </div>
@@ -215,7 +215,7 @@ export function ChatInterface() {
 
       {/* Input */}
       <div className="p-4 border-t border-base-300">
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <div className="flex-1">
             <textarea
               ref={inputRef}
@@ -231,9 +231,9 @@ export function ChatInterface() {
           <button
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || isTyping}
-            className="btn btn-primary btn-square"
+            className="btn btn-primary btn-square btn-sm"
           >
-            <Icon icon="mdi:send" className="text-lg" />
+            <Icon icon="mdi:send" className="text-sm" />
           </button>
         </div>
 

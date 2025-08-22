@@ -3,98 +3,8 @@ import { daisyThemeName } from '@/types/schemaOld';
 import { z } from 'zod';
 import { Icon } from '@iconify/react';
 import { fallbackPage, themeIconify } from './utils';
-import { examplePage, Website, WebsitePage, WebsiteTheme } from '@/types/mock';
+import { WebsitePage, WebsiteTheme } from '@/types/mock';
 import { useEditor } from '@/editor/context/EditorContext';
-
-const exampleTheme: WebsiteTheme = {
-  colors: {
-    light: {
-      primary: '#EF4444', // Red
-      secondary: '#F97316', // Orange
-      accent: '#FB923C', // Light orange as accent
-      background: '#FFFFFF',
-      card: '#FEF2F2', // Light red tint for cards
-      text: '#1E293B',
-      border: '#FECACA',
-    },
-    dark: {
-      primary: '#F87171', // Lighter red for dark mode
-      secondary: '#FB923C', // Brighter orange for dark mode
-      accent: '#FDBA74', // Very light orange as accent
-      background: '#0F172A',
-      card: '#1E293B', // Darker blue-gray for cards
-      text: '#F1F5F9',
-      border: '#334155',
-    },
-  },
-  typography: {
-    fontFamily: 'Montserrat',
-  },
-  radius: {
-    button: 8,
-    card: 8,
-  },
-};
-
-const exampleTheme2: WebsiteTheme = {
-  colors: {
-    light: {
-      primary: '#8B5CF6', // Vibrant Purple
-      secondary: '#EF4444', // Bold Red
-      accent: '#F59E42', // Vibrant Orange
-      background: '#F8FAFC', // Very light background for vibrancy
-      card: '#F3E8FF', // Light purple tint for cards
-      text: '#1E293B', // Deep blue-gray for professional contrast
-      border: '#C084FC', // Purple border for accent
-    },
-    dark: {
-      primary: '#A78BFA', // Lighter purple for dark mode
-      secondary: '#FB7185', // Vibrant red for dark mode
-      accent: '#FDBA74', // Bright orange for dark mode
-      background: '#18122B', // Deep purple-black for vibrancy
-      card: '#2D1E4A', // Dark purple for cards
-      text: '#F8FAFC', // Light text for contrast
-      border: '#8B5CF6', // Purple border for accent
-    },
-  },
-  typography: {
-    fontFamily: 'Montserrat',
-  },
-  radius: {
-    button: 10,
-    card: 12,
-  },
-};
-
-const exampleTheme3: WebsiteTheme = {
-  colors: {
-    light: {
-      primary: '#FF5722', // Vibrant orange-red
-      secondary: '#FF9800', // Warm orange
-      accent: '#FFC107', // Amber accent for energy
-      background: '#FFFBF5', // Warm white background
-      card: '#FFF3E0', // Light orange tint for cards
-      text: '#263238', // Deep blue-gray for professional contrast
-      border: '#FFCCBC', // Soft orange border
-    },
-    dark: {
-      primary: '#FF7043', // Brighter orange-red for dark mode
-      secondary: '#FFA726', // Bright orange for dark mode
-      accent: '#FFD54F', // Bright amber for dark mode
-      background: '#1D1D1D', // Dark background with slight warmth
-      card: '#2D2D2D', // Dark card with subtle warmth
-      text: '#ECEFF1', // Light blue-gray text for readability
-      border: '#D84315', // Deep orange border for accent
-    },
-  },
-  typography: {
-    fontFamily: 'Poppins', // Modern, professional font
-  },
-  radius: {
-    button: 8, // Slightly rounded buttons
-    card: 12, // More rounded cards for a modern feel
-  },
-};
 
 export const fontOptions = [
   { name: 'Inter', preview: 'Modern & Clean' },
@@ -181,6 +91,11 @@ const getPageHtml = (
         <!-- Custom Theme CSS Variables -->
         <style>
         ${generateThemeCSS(theme)}
+            html {
+                scroll-behavior: smooth;
+                 scrollbar-width: thin;
+                scrollbar-color: rgba(100, 100, 100, 0.5) transparent;
+          }
 
             body {
                 font-family: "${theme?.typography?.fontFamily || 'Roboto'}", system-ui, sans-serif;
@@ -279,10 +194,10 @@ const PageParser = () => {
 
   return (
     <>
-      {editingMode === 'theme' && <ThemeSwitcher />}
       <div className="w-full h-[90vh] rounded-lg overflow-hidden border border-zinc-400/10 shadow-lg">
+        {/* {editingMode === 'theme' && <ThemeSwitcher />} */}
         {/* Two iframes with absolute positioning for smooth transitions */}
-        <div className="relative w-full min-h-screen">
+        <div className="relative w-full min-h-screen* h-full">
           {[0, 1].map(index => (
             <iframe
               key={index}
@@ -316,7 +231,7 @@ export const ThemeSwitcher = (): JSX.Element => {
   };
 
   return (
-    <div className="flex overflow-x-auto gap-4 mb-0.5 max-sm:overflow-x-auto justify-center items-center backdrop-blur-xl mx-auto rounded-lg z-10">
+    <div className="scrollbar-thin flex overflow-x-auto gap-4 mb-0.5 max-sm:overflow-x-auto justify-center items-center backdrop-blur-xl mx-auto rounded-lg z-10">
       {Object.entries(themeIconify).map(([key, icon]) => (
         <button
           key={key}

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor, EditingMode } from '../../context/EditorContext';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import BlurDecoratives from '@/components/layout/blurDecoratives';
 
 export function EditorNavigation() {
   const { state, actions } = useEditor();
@@ -41,8 +42,8 @@ export function EditorNavigation() {
   };
 
   return (
-    <nav className="bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-30">
-      <div className="px-4 py-1">
+    <nav className="bg-base-100/40 backdrop-blur-lg border-b border-base-300 shadow-sm sticky top-0 z-30">
+      <div className="px-4 pt-1">
         <div className="flex items-center justify-between">
           {/* Left Section - Logo and Title */}
           <div className="flex items-center gap-4">
@@ -69,12 +70,14 @@ export function EditorNavigation() {
 
           {/* Center Section - Editing Modes */}
           <div className="flex items-center">
-            <div className="tabs tabs-sm* tabs-boxed p-1">
+            <div className="tabs bg-transparent tabs-sm* tabs-boxed p-1">
               {editingModes.map(mode => (
                 <button
                   key={mode.id}
                   onClick={() => actions.setEditingMode(mode.id)}
-                  className={`tab tab-sm gap-2 ${editingMode === mode.id ? 'tab-active' : ''}`}
+                  className={`tab !rounded-t-3xl !rounded-b-none tab-sm gap-2 ${
+                    editingMode === mode.id ? 'tab-active' : ''
+                  }`}
                   title={mode.description}
                 >
                   <Icon icon={mode.icon} className="text-sm" />

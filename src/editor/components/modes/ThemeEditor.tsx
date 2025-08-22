@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
@@ -87,10 +87,24 @@ const colorPresets = [
 ];
 
 export function ThemeEditor() {
-  const { state, actions } = useEditor();
+  const {
+    state: { theme },
+    actions,
+  } = useEditor();
   const [activeTab, setActiveTab] = useState<'colors' | 'typography'>('colors');
 
-  const { website, theme } = state;
+  const selectedPreset = useMemo(() => {
+    return colorPresets.find(preset => {
+      return (
+        (preset.primary === theme.colors?.light?.primary &&
+          preset.secondary === theme.colors?.light?.secondary &&
+          preset.accent === theme.colors?.light?.accent) ||
+        (preset.primary === theme.colors?.dark?.primary &&
+          preset.secondary === theme.colors?.dark?.secondary &&
+          preset.accent === theme.colors?.dark?.accent)
+      );
+    })?.name;
+  }, [theme]);
 
   const currentColors = theme.colors?.light || {
     primary: '#3B82F6',
@@ -107,7 +121,6 @@ export function ThemeEditor() {
 
   const applyColorPreset = (preset: Partial<(typeof colorPresets)[0]>) => {
     actions.setDaisyTheme(preset.mode === 'dark' ? 'webly-dark' : 'webly-light');
-    console.log('Applying color preset:', preset);
     updateTheme({
       colors: {
         ...theme.colors,
@@ -144,10 +157,12 @@ export function ThemeEditor() {
 
   const TabButton = ({ id, label, icon }: { id: string; label: string; icon: string }) => (
     <button
-      className={`tab ${activeTab === id ? 'tab-active' : ''}`}
+      className={`tab flex text-sm gap-2 items-center !rounded-t-3xl !rounded-b-none ${
+        activeTab === id ? 'tab-active' : ''
+      }`}
       onClick={() => setActiveTab(id as any)}
     >
-      <Icon icon={icon} className="w-4 h-4 mr-2" />
+      <Icon icon={icon} className="relative w-4 h-4 top-0.5" />
       {label}
     </button>
   );
@@ -167,7 +182,7 @@ export function ThemeEditor() {
       </div>
 
       {/* Tabs */}
-      <div className="tabs tabs-boxed">
+      <div className="tabs bg-transparent tabs-boxed">
         <TabButton id="colors" label="Colors" icon="mdi:palette" />
         <TabButton id="typography" label="Typography" icon="mdi:format-text" />
       </div>
@@ -180,8 +195,8 @@ export function ThemeEditor() {
           className="space-y-4"
         >
           {/* Color Presets */}
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body">
+          <div className="card bg-base-100/20 backdrop-blur-md shadow-sm">
+            <div className="card-body p-4">
               <h4 className="card-title text-base">Color Presets</h4>
               <div className="grid grid-cols-2 gap-3">
                 {colorPresets.map((preset, index) => (
@@ -192,7 +207,9 @@ export function ThemeEditor() {
                       border: `1px solid ${preset.mode === 'dark' ? '#27272a' : '#e2e8f0'}`,
                       color: preset.mode === 'dark' ? '#f3f4f6' : '#334155',
                     }}
-                    className="btn btn-ghost h-auto p-3 justify-center hover:bg-base-200"
+                    className={`btn btn-ghost h-auto p-3 justify-center hover:bg-base-200 ${
+                      preset.name === selectedPreset ? '!border-primary' : ''
+                    }`}
                     onClick={() => applyColorPreset(preset)}
                   >
                     <div className="flex flex-col-reverse items-center gap-3">
@@ -219,57 +236,11 @@ export function ThemeEditor() {
           </div>
 
           {/* Daisy Theme */}
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body">
-              <h4 className="card-title text-base">Themes</h4>
+          <div className="card bg-base-100/20 shadow-sm">
+            <div className="card-body p-4">
+              <h4 className="card-title text-base">Themes (daisyUI)</h4>
               <div className="*:overflow-hidden *:flex-wrap ">
                 <ThemeSwitcher />
-              </div>
-            </div>
-          </div>
-          {/* Custom Colors */}
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body">
-              <h4 className="card-title text-base">Custom Colors</h4>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Primary Color</span>
-                    <span className="label-text-alt">{currentColors.primary}</span>
-                  </label>
-                  <input
-                    type="color"
-                    className="input input-bordered h-12"
-                    value={currentColors.primary}
-                    onChange={e => updateColor('primary', e.target.value)}
-                  />
-                </div>
-
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Secondary Color</span>
-                    <span className="label-text-alt">{currentColors.secondary}</span>
-                  </label>
-                  <input
-                    type="color"
-                    className="input input-bordered h-12"
-                    value={currentColors.secondary}
-                    onChange={e => updateColor('secondary', e.target.value)}
-                  />
-                </div>
-
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Accent Color</span>
-                    <span className="label-text-alt">{currentColors.accent}</span>
-                  </label>
-                  <input
-                    type="color"
-                    className="input input-bordered h-12"
-                    value={currentColors.accent}
-                    onChange={e => updateColor('accent', e.target.value)}
-                  />
-                </div>
               </div>
             </div>
           </div>
@@ -284,7 +255,7 @@ export function ThemeEditor() {
           className="space-y-4"
         >
           <div className="card bg-base-100 shadow-sm">
-            <div className="card-body">
+            <div className="card-body p-4">
               <h4 className="card-title text-base">Font Family</h4>
               <div className="space-y-3">
                 {fontOptions.map((font, index) => (

@@ -57,7 +57,8 @@ type EditorAction =
   | { type: 'UPDATE_SECTION'; payload: { sectionId: string; section: any } }
   | { type: 'MOVE_SECTION'; payload: { sectionId: string; direction: 'up' | 'down' } }
   | { type: 'DUPLICATE_SECTION'; payload: { sectionId: string } }
-  | { type: 'REORDER_SECTION'; payload: { sectionId: string; newIndex: number } };
+  | { type: 'REORDER_SECTION'; payload: { sectionId: string; newIndex: number } }
+  | { type: 'DELETE_SECTION'; payload: { sectionId: string } };
 
 const initialTheme: Partial<WebsiteTheme> = {
   colors: {
@@ -258,6 +259,16 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       }
       return state;
 
+    case 'DELETE_SECTION':
+      const { sectionId: deleteSectionId } = action.payload;
+      const filteredSections = state.currentPage.sections.filter(
+        section => section.id !== deleteSectionId
+      );
+      return {
+        ...state,
+        currentPage: { ...state.currentPage, sections: filteredSections },
+        hasUnsavedChanges: true,
+      };
     default:
       return state;
   }
@@ -298,6 +309,7 @@ interface EditorContextType {
     moveSection: (sectionId: string, direction: 'up' | 'down') => void;
     duplicateSection: (sectionId: string) => void;
     reorderSection: (sectionId: string, newIndex: number) => void;
+    deleteSection: (sectionId: string) => void;
     saveToHistory: () => void;
     undo: () => void;
     redo: () => void;
@@ -337,6 +349,18 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       })
     );
   }, [state]);
+
+  useEffect(() => {
+    if (state.editingMode !== 'preview') {
+      actions.setRightDrawer(true);
+    } else {
+      actions.setRightDrawer(false);
+      actions.setLeftDrawer(false);
+      actions.setSelectedSection(null);
+      actions.setIsEditing(false);
+      actions.setChatVisible(false);
+    }
+  }, [state.editingMode]);
 
   // Actions
   const setWebsite = useCallback((website: Website) => {
@@ -401,6 +425,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   const reorderSection = useCallback((sectionId: string, newIndex: number) => {
     dispatch({ type: 'REORDER_SECTION', payload: { sectionId, newIndex } });
+  }, []);
+
+  const deleteSection = useCallback((sectionId: string) => {
+    dispatch({ type: 'DELETE_SECTION', payload: { sectionId } });
   }, []);
 
   const saveToHistory = useCallback(() => {
@@ -481,6 +509,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     updateSection,
     moveSection,
     duplicateSection,
+    deleteSection,
     reorderSection,
     saveToHistory,
     undo,
