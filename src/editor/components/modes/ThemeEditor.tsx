@@ -172,7 +172,7 @@ export function ThemeEditor() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6 overflow-x-hidden"
+      className="space-y-6 scrollbar-thin overflow-x-hidden"
     >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Theme Editor</h3>

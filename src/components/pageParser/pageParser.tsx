@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { daisyThemeName } from '@/types/schemaOld';
-import { z } from 'zod';
+import { set, z } from 'zod';
 import { Icon } from '@iconify/react';
 import { fallbackPage, themeIconify } from './utils';
 import { WebsitePage, WebsiteTheme } from '@/types/mock';
@@ -20,10 +20,275 @@ export const fontOptions = [
   { name: 'Merriweather', preview: 'Classic & Readable' },
 ];
 
-const getPageHtml = (
+// Lightweight iframe -> parent bridge script
+const iframeBridgeScript = `
+<script>
+(function () {
+  function send(type, payload, requestId) {
+    try { parent.postMessage({ weblyIframe: true, type: type, payload: payload || null, requestId: requestId || null }, '*'); }
+    catch(e) {}
+  }
+  
+  // Track currently visible sections and their ratios
+  let visibleSections = new Map();
+  let currentActiveSection = null;
+  
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const id = entry.target.id || null;
+      if (!id) return;
+      
+      if (entry.isIntersecting) {
+        // Update visibility ratio for this section
+        visibleSections.set(id, entry.intersectionRatio);
+      } else {
+        // Remove from visible sections when no longer intersecting
+        visibleSections.delete(id);
+        if (currentActiveSection === id) {
+          send('section:exit', { id, ratio: entry.intersectionRatio });
+          currentActiveSection = null;
+        }
+      }
+      
+      // Find the section with highest visibility ratio
+      let mostVisible = null;
+      let highestRatio = 0;
+      
+      for (let [sectionId, ratio] of visibleSections) {
+        if (ratio > highestRatio) {
+          highestRatio = ratio;
+          mostVisible = sectionId;
+        }
+      }
+      
+      // Only send enter/exit events when the active section changes
+      if (mostVisible !== currentActiveSection) {
+        if (currentActiveSection) {
+          send('section:exit', { id: currentActiveSection, ratio: visibleSections.get(currentActiveSection) || 0 });
+        }
+        if (mostVisible) {
+          send('section:enter', { id: mostVisible, ratio: highestRatio });
+        }
+        currentActiveSection = mostVisible;
+      }
+    });
+  }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1], rootMargin: '0px 0px -10% 0px' });
+
+
+  function observeSections() {
+    document.querySelectorAll('section[id]').forEach(s => {
+      try { io.observe(s); } catch(e) {}
+    });
+  }
+  if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', observeSections);
+  else observeSections();
+  // MutationObserver to re-run observeSections when new nodes added
+  const mo = new MutationObserver(muts => {
+    let added = false;
+    muts.forEach(m => { if (m.addedNodes && m.addedNodes.length) added = true; });
+    if (added) { observeSections(); send('dom:mutated', { reason: 'nodes-added' }); }
+  });
+  mo.observe(document.body || document.documentElement, { childList: true, subtree: true })
+  // Throttled scroll reporter
+  let t = null;
+  window.addEventListener('scroll', () => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => send('scroll', { scrollY: window.scrollY, scrollX: window.scrollX }), 120);
+  }, { passive: true });
+  // Simple click reporter
+  document.addEventListener('click', (e) => {
+    const target = e.target && (e.target.closest ? e.target.closest('[id]') : e.target);
+    const id = target && target.id ? target.id : null;
+    send('click', { tag: e.target && e.target.tagName, id });
+  });
+  // Parent -> iframe messages
+  window.addEventListener('message', (e) => {
+    try {
+      const d = e.data;
+      if (!d || !d.fromParent) return;
+      // example command handler
+      if (d.type === 'command:scrollToSection' && d.payload && d.payload.id) {
+        const el = document.getElementById(d.payload.id);
+        if (el) { el.scrollIntoView({ behavior: d.payload.behavior || 'smooth', block: 'start' }); send('response:scrollToSection', { id: d.payload.id, ok: true }, d.requestId); }
+        else send('response:scrollToSection', { id: d.payload.id, ok: false, reason: 'not-found' }, d.requestId);
+        return;
+      }
+      // Generic: re-dispatch inside iframe
+      window.dispatchEvent(new CustomEvent('webly:from-parent', { detail: d }));
+    } catch (err) {}
+  });
+  // Minimal public API inside iframe scripts
+  try {
+    window.WeblyBridge = {
+      sendToParent: send,
+      onParentMessage: (handler) => window.addEventListener('message', (e) => { if (e.data && e.data.fromParent) handler(e.data); })
+    };
+  } catch(e) {}
+})();
+<\/script>
+`;
+
+export const textEditingBridgeScript = `
+<script>
+(function () {
+  // Don't initialize if already initialized
+  if (window.textEditingInitialized) return;
+  window.textEditingInitialized = true;
+
+  // Inherit base bridge functionality
+  function send(type, payload, requestId) {
+    try { 
+      parent.postMessage({ 
+        weblyIframe: true, 
+        type: type, 
+        payload: payload || null, 
+        requestId: requestId || null 
+      }, '*'); 
+    } catch(e) {
+      console.warn('Bridge send error:', e);
+    }
+  }
+
+  // Text editing specific functionality
+  let textEditingMode = false;
+  let textChangedElements = new Set();
+  let debounceTimer = null;
+
+  function initializeTextEditing() {
+    if (textEditingMode) return; // Already initialized
+    textEditingMode = true;
+    
+    console.log('Initializing text editing mode');
+
+    // Set up text change listeners with better event handling
+    document.addEventListener('input', handleTextInput, true);
+    document.addEventListener('blur', handleTextBlur, true);
+    document.addEventListener('paste', handleTextPaste, true);
+    document.addEventListener('focus', handleTextFocus, true);
+
+    // Add placeholders for empty editable elements
+    document.querySelectorAll('[data-text-editable="true"]').forEach(element => {
+      if (!element.textContent.trim()) {
+        element.setAttribute('data-placeholder', 'Click to edit...');
+      }
+    });
+
+    send('response:textEditingEnabled', { success: true });
+  }
+
+  function handleTextFocus(e) {
+    const element = e.target;
+    if (!element.hasAttribute('data-key')) return;
+    
+    // Clear placeholder styling on focus
+    element.style.opacity = '1';
+  }
+
+  function handleTextInput(e) {
+    const element = e.target;
+    if (!element.hasAttribute('data-key')) return;
+
+    textChangedElements.add(element.getAttribute('data-key'));
+    
+    // Debounce text change notifications
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      sendTextChanges();
+    }, 300);
+  }
+
+  function handleTextBlur(e) {
+    const element = e.target;
+    if (!element.hasAttribute('data-key')) return;
+    
+    // Send immediate update on blur
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+    sendTextChanges();
+  }
+
+  function handleTextPaste(e) {
+    const element = e.target;
+    if (!element.hasAttribute('data-key')) return;
+
+    // Allow paste but clean it up
+    setTimeout(() => {
+      // Clean up pasted content - remove unwanted formatting
+      const text = element.textContent || '';
+      if (text !== element.textContent) {
+        element.textContent = text;
+      }
+      
+      textChangedElements.add(element.getAttribute('data-key'));
+      sendTextChanges();
+    }, 10);
+  }
+
+  function sendTextChanges() {
+    if (textChangedElements.size === 0) return;
+
+    const changes = {};
+    textChangedElements.forEach(dataKey => {
+      const element = document.querySelector(\`[data-key="\${dataKey}"]\`);
+      if (element) {
+        changes[dataKey] = element.textContent || '';
+      }
+    });
+
+    send('text:changed', { changes });
+    textChangedElements.clear();
+  }
+
+  // Listen for parent messages
+  window.addEventListener('message', (e) => {
+    try {
+      const data = e.data;
+      if (!data || !data.fromParent) return;
+
+      if (data.type === 'command:enableTextEditing') {
+        initializeTextEditing();
+      }
+
+      if (data.type === 'command:updateText') {
+        const { dataKey, newText } = data.payload || {};
+        if (dataKey) {
+          const element = document.querySelector(\`[data-key="\${dataKey}"]\`);
+          if (element) {
+            element.textContent = newText || '';
+            send('response:textUpdated', { dataKey, success: true });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Text editing bridge error:', err);
+    }
+  });
+
+  // Auto-initialize if elements are already present
+  function checkAndInitialize() {
+    if (document.querySelector('[data-text-editable="true"]')) {
+      initializeTextEditing();
+    }
+  }
+
+  // Initialize based on document state
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', checkAndInitialize);
+  } else {
+    // Use setTimeout to ensure DOM is fully rendered
+    setTimeout(checkAndInitialize, 100);
+  }
+})();
+<\/script>
+`;
+
+export const getPageHtml = (
   page: WebsitePage,
   theme: Partial<WebsiteTheme>,
-  daisyTheme: daisyThemeName
+  daisyTheme: daisyThemeName,
+  textEditing: boolean = false
 ) => {
   // Compose all sections' HTML and JS
   if (!page || !page.sections || page.sections.length === 0) {
@@ -128,6 +393,10 @@ const getPageHtml = (
         
         <!-- Section-specific scripts -->
         ${sectionsJs}
+
+        <!-- Iframe Bridge Script -->
+          ${iframeBridgeScript}
+        ${textEditing ? textEditingBridgeScript : ''}
       </body>
 
     </html>
@@ -137,8 +406,10 @@ const getPageHtml = (
 const PageParser = () => {
   const [activeIframeIndex, setActiveIframeIndex] = useState(0);
   const [iframeContents, setIframeContents] = useState(['', '']);
+  const [ignoreNextLoad, setIgnoreNextLoad] = useState(false);
   const {
     state: { theme, currentPage, daisyTheme, selectedSectionId, editingMode },
+    actions,
   } = useEditor();
   const page = useMemo(() => ({ ...currentPage }), [currentPage]);
 
@@ -147,7 +418,7 @@ const PageParser = () => {
 
   // Generate HTML and update iframe contents
   useEffect(() => {
-    const html = getPageHtml(page, theme, daisyTheme);
+    const html = getPageHtml(page, theme, daisyTheme, editingMode === 'text');
     const newContents = [...iframeContents];
     const inactiveIndex = activeIframeIndex === 0 ? 1 : 0;
 
@@ -165,10 +436,9 @@ const PageParser = () => {
 
       iframe.addEventListener('load', handleLoad);
     }
-  }, [daisyTheme, page, theme.colors, theme.radius]);
+  }, [daisyTheme, page, theme.colors, theme.radius, editingMode === 'text']);
 
-  // Change typography font
-
+  // Change typography font family
   useEffect(() => {
     const iframe = iframeRefs[activeIframeIndex].current;
     if (iframe) {
@@ -186,11 +456,51 @@ const PageParser = () => {
     const iframe = iframeRefs[activeIframeIndex].current;
     if (iframe && selectedSectionId) {
       const section = iframe.contentDocument?.getElementById(selectedSectionId);
-      if (section) {
+      if (section && !ignoreNextLoad) {
+        setIgnoreNextLoad(true);
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => setIgnoreNextLoad(false), 1000);
       }
     }
   }, [activeIframeIndex, selectedSectionId]);
+
+  // Handle messages from iframes
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (!e.data || e.data.weblyIframe !== true) return;
+      // optional: verify source is one of our iframe windows
+      const iframeWindows = iframeRefs.map(r => r.current?.contentWindow).filter(Boolean);
+      if (iframeWindows.length && !iframeWindows.includes(e.source as Window)) return;
+      // re-dispatch as CustomEvent for app-level listeners
+      try {
+        window.dispatchEvent(new CustomEvent('webly:iframe:event', { detail: e.data }));
+      } catch (err) {
+        const ev = document.createEvent('CustomEvent');
+        // ev.initCustomEvent('webly:iframe:event', true, true, e.data);
+        window.dispatchEvent(ev);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    window.addEventListener('webly:iframe:event', (ev: any) => {
+      // ev.detail === { weblyIframe: true, type: 'section:enter', payload: { id, ratio }, requestId? }
+      const data = ev.detail;
+      if (data.type === 'section:enter') {
+        console.log('User entered section:', data.payload.id);
+        if (!ignoreNextLoad) {
+          actions.setSelectedSection(data.payload.id);
+        }
+        // do what you want with section id
+      }
+      if (data.type === 'section:exit') {
+        console.log('User exited section:', data.payload.id);
+        // do what you want with section id
+      }
+    });
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('webly:iframe:event', () => {});
+    };
+  }, []);
 
   return (
     <>

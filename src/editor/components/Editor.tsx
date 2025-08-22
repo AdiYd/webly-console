@@ -65,7 +65,7 @@ function EditorContent() {
               width: chatVisible ? `calc(100% - ${chatWidth}px)` : '100%',
             }}
           >
-            <div className="h-full p-1 overflow-auto">
+            <div className="h-full p-1 overflow-hidden">
               <EnhancedPageParser />
             </div>
           </motion.div>

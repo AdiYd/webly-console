@@ -41,7 +41,7 @@ export function EditorNavigation() {
   };
 
   return (
-    <nav className="bg-base-100/40 backdrop-blur-lg border-b border-base-300 shadow-sm sticky top-0 z-30">
+    <nav className="bg-base-100/40 rounded-b-3xl shadow-md backdrop-blur-lg border-b border-zinc-400/40 sticky top-0 z-30">
       <div className="px-4 pt-1">
         <div className="flex items-center justify-between">
           {/* Left Section - Logo and Title */}
@@ -68,13 +68,13 @@ export function EditorNavigation() {
           </div>
 
           {/* Center Section - Editing Modes */}
-          <div className="flex items-center">
-            <div className="tabs bg-transparent tabs-sm* tabs-boxed p-1">
+          <div className="flex relative -bottom-1 items-center">
+            <div className="tabs align-bottom bg-transparent tabs-sm* tabs-boxed p-1">
               {editingModes.map(mode => (
                 <button
                   key={mode.id}
                   onClick={() => actions.setEditingMode(mode.id)}
-                  className={`tab !rounded-t-3xl !rounded-b-none tab-sm gap-2 ${
+                  className={`tab !rounded-t-3xl hover:border-b hover:border-secondary !rounded-b-none tab-sm gap-2 ${
                     editingMode === mode.id ? 'tab-active' : ''
                   }`}
                   title={mode.description}
@@ -182,6 +182,12 @@ export function EditorNavigation() {
                   <a onClick={() => console.log('Preview in new tab')}>
                     <Icon icon="mdi:open-in-new" />
                     Preview in New Tab
+                  </a>
+                </li>
+                <li>
+                  <a onClick={() => actions.resetState()}>
+                    <Icon icon="mdi:refresh" />
+                    Reset Settings
                   </a>
                 </li>
                 <li>

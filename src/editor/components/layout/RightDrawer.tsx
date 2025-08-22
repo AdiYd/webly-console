@@ -11,46 +11,70 @@ export function RightDrawer() {
     state,
     actions: { setRightDrawer },
   } = useEditor();
-  const [activeTab, setActiveTab] = useState<'editor' | 'properties' | 'assets'>('editor');
-  const [hideTabs, setHideTabs] = useState(false);
+  const [activeTab, setActiveTab] = useState<'editor' | 'sections' | 'assets'>('editor');
   useEffect(() => {
     if (['theme'].includes(state.editingMode)) {
       setActiveTab('editor');
-      setHideTabs(true);
     } else {
-      setActiveTab('editor');
-      setHideTabs(false);
+      setActiveTab('sections');
     }
   }, [state.editingMode]);
 
   const tabs = [
-    { id: 'editor' as const, label: 'Editor', icon: 'mdi:pencil' },
-    { id: 'properties' as const, label: 'Properties', icon: 'mdi:tune' },
-    { id: 'assets' as const, label: 'Assets', icon: 'mdi:folder-image' },
+    { id: 'editor' as const, label: 'Editor', icon: 'mdi:pencil', modes: ['preview'] },
+    {
+      id: 'sections' as const,
+      label: 'Sections',
+      icon: 'mdi:tune',
+      modes: ['text', 'preview', 'image'],
+    },
+    {
+      id: 'assets' as const,
+      label: 'Assets',
+      icon: 'mdi:folder-image',
+      modes: ['text', 'preview', 'image'],
+    },
   ];
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-400/50">
-        <h2 className="text-lg flex justify-between items-center font-semibold text-base-content">
-          Edit
+      <div className="border-b border-zinc-400/50 pb-1 z-20 bg-base-100/65 backdrop-blur-sm">
+        <div className="p-4 pb-0 flex justify-between">
+          <div className="flex gap-2 items-center">
+            <h2 className="text-lg flex justify-between items-center font-semibold text-base-content">
+              Edit
+            </h2>
+            <p className="text-xs text-base-content/60 mt-1">{state.selectedSectionId}</p>
+          </div>
           <Icon
             title="close menu"
             className="btn btn-neutral btn-xs"
             icon="mingcute:arrow-right-fill"
             onClick={() => setRightDrawer(false)}
           />
-        </h2>
-        {!hideTabs && (
-          <p className="text-sm text-base-content/60 mt-1">
-            {state.selectedSectionId ? 'Section selected' : 'No selection'}
-          </p>
+        </div>
+        {state.editingMode !== 'theme' && (
+          <div className="tabs !relative !-bottom-1 tabs-bordered px-4">
+            {tabs.map(
+              tab =>
+                tab.modes?.includes(state.editingMode) && (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`tab gap-2 ${activeTab === tab.id ? 'tab-active' : ''}`}
+                  >
+                    <Icon icon={tab.icon} className="text-sm" />
+                    <span className="text-xs">{tab.label}</span>
+                  </button>
+                )
+            )}
+          </div>
         )}
       </div>
 
       {/* Tabs */}
-      {!hideTabs && (
+      {/* {!hideTabs && (
         <div className="tabs tabs-bordered px-4">
           {tabs.map(tab => (
             <button
@@ -63,7 +87,7 @@ export function RightDrawer() {
             </button>
           ))}
         </div>
-      )}
+      )} */}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
@@ -75,7 +99,7 @@ export function RightDrawer() {
           className="p-2 pt-4"
         >
           {activeTab === 'editor' && <ModeRenderer />}
-          {activeTab === 'properties' && <PropertiesPanel />}
+          {activeTab === 'sections' && <PropertiesPanel />}
           {activeTab === 'assets' && <AssetsPanel />}
         </motion.div>
       </div>
@@ -153,7 +177,7 @@ function PropertiesPanel() {
           <label className="label">
             <span className="label-text font-medium">Used Assets</span>
           </label>
-          <div className="">
+          <div className="space-y-2">
             {selectedSection.used_assets.map((asset, index) => (
               <img
                 key={index}

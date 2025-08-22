@@ -1,7 +1,22 @@
 'use client';
 
-import { createContext, useContext, useReducer, useCallback, useEffect, ReactNode } from 'react';
-import { Website, WebsitePage, WebsiteTheme, exampleWebsite, examplePage } from '@/types/mock';
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useCallback,
+  useEffect,
+  ReactNode,
+  useRef,
+} from 'react';
+import {
+  Website,
+  WebsitePage,
+  WebsiteTheme,
+  exampleWebsite,
+  examplePage,
+  examplePage2,
+} from '@/types/mock';
 import { daisyThemeName } from '@/types/schemaOld';
 
 export type EditingMode = 'preview' | 'text' | 'image' | 'theme' | 'layout' | 'ai';
@@ -51,6 +66,7 @@ type EditorAction =
   | { type: 'SET_CHAT_WIDTH'; payload: number }
   | { type: 'SET_RIGHT_DRAWER'; payload: boolean }
   | { type: 'SET_LEFT_DRAWER'; payload: boolean }
+  | { type: 'RESET_STATE' }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_SAVING'; payload: boolean }
   | { type: 'SAVE_TO_HISTORY' }
@@ -94,7 +110,7 @@ const initialTheme: Partial<WebsiteTheme> = {
 
 const initialState: EditorState = {
   website: exampleWebsite,
-  currentPage: examplePage,
+  currentPage: examplePage2,
   currentPageId: 'landing-page',
   theme: initialTheme,
   daisyTheme: 'webly-light',
@@ -165,6 +181,27 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 
     case 'SET_LEFT_DRAWER':
       return { ...state, leftDrawerOpen: action.payload };
+
+    case 'RESET_STATE':
+      const {
+        leftDrawerOpen,
+        rightDrawerOpen,
+        chatVisible,
+        chatWidth,
+        screenMode,
+        editingMode,
+        isEditing,
+      } = initialState;
+      return {
+        ...state,
+        leftDrawerOpen,
+        rightDrawerOpen,
+        chatVisible,
+        chatWidth,
+        screenMode,
+        editingMode,
+        isEditing,
+      };
 
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
@@ -312,6 +349,7 @@ interface EditorContextType {
     setChatWidth: (width: number) => void;
     setRightDrawer: (open: boolean) => void;
     setLeftDrawer: (open: boolean) => void;
+    resetState: () => void;
     updateSection: (sectionId: string, section: any) => void;
     moveSection: (sectionId: string, direction: 'up' | 'down') => void;
     duplicateSection: (sectionId: string) => void;
@@ -328,6 +366,7 @@ const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(editorReducer, initialState, initializer);
+  const initialRender = useRef(true);
 
   useEffect(() => {
     const {
@@ -360,9 +399,15 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, [state]);
 
   useEffect(() => {
-    if (state.editingMode !== 'preview') {
+    if (initialRender.current) {
+      setTimeout(() => {
+        initialRender.current = false;
+      }, 1000);
+      return;
+    }
+    if (state.editingMode === 'theme') {
       actions.setRightDrawer(true);
-    } else {
+    } else if (state.editingMode === 'preview') {
       actions.setRightDrawer(false);
       actions.setLeftDrawer(false);
       actions.setSelectedSection(null);
@@ -422,6 +467,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   const setLeftDrawer = useCallback((open: boolean) => {
     dispatch({ type: 'SET_LEFT_DRAWER', payload: open });
+  }, []);
+
+  const resetState = useCallback(() => {
+    dispatch({ type: 'RESET_STATE' });
   }, []);
 
   const updateSection = useCallback((sectionId: string, section: any) => {
@@ -520,6 +569,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     setChatWidth,
     setRightDrawer,
     setLeftDrawer,
+    resetState,
     updateSection,
     moveSection,
     duplicateSection,

@@ -6,6 +6,7 @@ import PageParser from '@/components/pageParser/pageParser';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
 import { stat } from 'fs';
+import { TextEditingPageParser } from '@/components/pageParser/pageParserTextEditing';
 
 export function EnhancedPageParser() {
   const { state, actions } = useEditor();
@@ -137,10 +138,19 @@ export function EnhancedPageParser() {
   };
 
   return (
-    <div className={`relative ${state.screenMode === 'mobile' ? 'max-w-sm mx-auto' : ''}`}>
+    <div
+      className={`relative ${
+        state.screenMode === 'mobile'
+          ? 'max-w-sm mx-auto rounded-3xl border-base-content/80 border-2 ring-2 ring-base-content/80 shadow-xl overflow-hidden'
+          : ''
+      }`}
+    >
       {/* Page Parser Container */}
       <div ref={parserRef} className="relative">
-        <PageParser />
+        {state.screenMode === 'mobile' && (
+          <div className="absolute z-[9999] top-4 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white border-[10px] border-black"></div>
+        )}
+        {state.editingMode === 'text' ? <TextEditingPageParser /> : <PageParser />}
 
         {/* Editing Overlays */}
         {/* {renderEditingOverlays()} */}
