@@ -46,7 +46,7 @@ function EditorContent() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -300, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-80 bg-base-200/20 border-r border-base-300 shadow-lg z-20"
+              className="w-80 bg-base-200/20 border-r border-zinc-400/40 shadow-lg z-20"
             >
               <LeftSidebar />
             </motion.div>
@@ -104,7 +104,7 @@ function EditorContent() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 300, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-80 bg-base-200/20 backdrop-blur-lg border-l border-base-300 shadow-lg z-20"
+              className="w-80 bg-base-200/20 backdrop-blur-lg border-l border-zinc-400/40 shadow-lg z-20"
             >
               <RightDrawer />
             </motion.div>

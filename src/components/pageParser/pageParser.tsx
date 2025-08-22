@@ -194,10 +194,10 @@ const PageParser = () => {
 
   return (
     <>
-      <div className="w-full h-[90vh] rounded-lg overflow-hidden border border-zinc-400/10 shadow-lg">
+      <div className="w-full h-[calc(100vh-3.5rem)] rounded-lg overflow-hidden border border-zinc-400/10 shadow-lg">
         {/* {editingMode === 'theme' && <ThemeSwitcher />} */}
         {/* Two iframes with absolute positioning for smooth transitions */}
-        <div className="relative w-full min-h-screen* h-full">
+        <div className="relative w-full min-h-screen h-full">
           {[0, 1].map(index => (
             <iframe
               key={index}

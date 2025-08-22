@@ -99,16 +99,16 @@ export function ChatInterface() {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-base-100/20 backdrop-blur-lg">
+    <div className="h-full flex flex-col backdrop-blur-xl">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-400/40">
+      <div className="p-4 pb-3 border-b border-zinc-400/40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <Icon icon="mdi:robot" className="text-primary-content text-lg" />
+            <div className="bg-primary flex items-center justify-center rounded-full w-8 h-8 relative mask mask-circle">
+              <div className="circle-bg" />
             </div>
-            <div>
-              <h3 className="font-semibold text-base-content">AI Assistant</h3>
+            <div className="flex flex-wrap items-baseline gap-2">
+              <h3 className="font-semibold text-base-content">Webly's Assistant</h3>
               <p className="text-xs text-base-content/60">{isTyping ? 'Typing...' : 'Online'}</p>
             </div>
           </div>
@@ -123,17 +123,17 @@ export function ChatInterface() {
             </button>
             <button
               onClick={() => actions.setChatVisible(false)}
-              className="btn btn-ghost btn-sm btn-circle"
+              className="btn btn-neutral btn-xs"
               title="Close chat"
             >
-              <Icon icon="mdi:close" className="text-lg" />
+              <Icon icon="mingcute:arrow-right-fill" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 scrollbar-thin overflow-y-auto p-4 space-y-4">
         <AnimatePresence>
           {messages.map(message => (
             <motion.div
@@ -196,14 +196,14 @@ export function ChatInterface() {
 
       {/* Quick Actions */}
       {messages.length <= 1 && (
-        <div className="p-4 border-t border-base-300">
+        <div className="p-4 border-t border-zinc-400/40">
           <p className="text-xs text-base-content/60 mb-3">Quick actions:</p>
           <div className="grid grid-cols-2 gap-2">
             {quickActions.map((action, index) => (
               <button
                 key={index}
                 onClick={action.action}
-                className="badge badge-sm justify-center h-fit text-left gap-2"
+                className="badge badge-neutral badge-xs justify-center h-fit text-left gap-2"
               >
                 <Icon icon={action.icon} className="text-base" />
                 <span className="text-xs truncate text-wrap">{action.label}</span>
@@ -214,7 +214,7 @@ export function ChatInterface() {
       )}
 
       {/* Input */}
-      <div className="p-4 border-t border-base-300">
+      <div className="p-4 border-t border-zinc-400/40">
         <div className="flex items-center gap-2">
           <div className="flex-1">
             <textarea

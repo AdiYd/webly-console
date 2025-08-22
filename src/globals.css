@@ -171,7 +171,7 @@
 }
 
 .btn-neutral {
-  @apply bg-gradient-to-r from-base-content hover:bg-gradient-to-l to-base-content/80 border border-zinc-400/40 text-base-100;
+  @apply bg-gradient-to-r from-base-content hover:bg-gradient-to-l disabled:text-base-300 disabled:opacity-60 to-base-content/80 border border-zinc-400/40 text-base-100;
   backdrop-filter: blur(10px);
 }
 

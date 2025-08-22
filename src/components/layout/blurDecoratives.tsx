@@ -12,13 +12,20 @@ const BlurDecoratives = () => {
           isDarkTheme
             ? 'from-purple-200/40 to-violet-400/40'
             : 'from-purple-300/40 to-violet-400/40'
-        } blur-[100px]`}
+        } blur-[200px]`}
+      />
+      <div
+        className={`absolute overflow-hidden bottom-0 left-[-30vw] w-1/2 h-1/3 rounded-full bg-gradient-to-r ${
+          isDarkTheme
+            ? 'from-orange-400/40 to-violet-400/40'
+            : 'from-orange-300/40 to-violet-400/40'
+        } blur-[200px]`}
       />
       <div
         style={{}}
         className={`absolute bottom-0 right-[-30%] w-1/2 h-1/5 rounded-full bg-gradient-to-r ${
           isDarkTheme ? 'from-amber-400/80 to-pink-400/50' : 'from-green-400/40 to-blue-400/30'
-        } blur-[100px]`}
+        } blur-[200px]`}
       />
       {!isDarkTheme && (
         <div
