@@ -41,14 +41,17 @@ export function EditorNavigation() {
   };
 
   return (
-    <nav className="bg-base-200/40 rounded-b-3xl* shadow-md backdrop-blur-lg border-b border-zinc-400/40 sticky top-0 z-30">
+    <nav className="bg-base-200/40 rounded-b-2xl* shadow-lg backdrop-blur-lg border-b-[0.9px] border-zinc-400/40 sticky top-0 z-30">
       <div className="px-4 pt-1">
         <div className="flex items-center justify-between">
           {/* Left Section - Logo and Title */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Icon icon="mdi:web" className="text-primary-content text-lg" />
+              <div className="w-8 h-8 bg-base-300* rounded-lg flex items-center justify-center">
+                <Icon
+                  icon="game-icons:owl"
+                  className="text-primary hover:text-secondary transition-colors text-lg"
+                />
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-base-content">Webly Editor</h1>
@@ -68,14 +71,14 @@ export function EditorNavigation() {
           </div>
 
           {/* Center Section - Editing Modes */}
-          <div className="flex relative -bottom-1 items-center">
-            <div className="tabs align-bottom bg-transparent* tabs-sm* tabs-lifted p-1">
+          <div className="flex relative items-center">
+            <div className="tabs align-bottom bg-transparent* tabs-sm* tabs-lifted p-1 pb-0">
               {editingModes.map(mode => (
                 <button
                   key={mode.id}
                   onClick={() => actions.setEditingMode(mode.id)}
-                  className={`tab bg-transparent !rounded-t-3xl hover:border-b hover:border-secondary tab-sm gap-2 ${
-                    editingMode === mode.id ? 'tab-active text-accent*' : ''
+                  className={`tab bg-transparent !rounded-t-3xl gap-2 ${
+                    editingMode === mode.id ? 'tab-active' : 'hover:opacity-70'
                   }`}
                   title={mode.description}
                 >
@@ -132,7 +135,7 @@ export function EditorNavigation() {
               <button
                 className={`btn btn-ghost btn-sm join-item ${leftDrawerOpen ? 'btn-active' : ''}`}
                 onClick={() => actions.setLeftDrawer(!leftDrawerOpen)}
-                title="Toggle left sidebar"
+                title={leftDrawerOpen ? 'Close left panel' : 'Open left panel'}
               >
                 <Icon icon="mdi:dock-left" className="text-lg" />
               </button>
@@ -146,7 +149,7 @@ export function EditorNavigation() {
               <button
                 className={`btn btn-ghost btn-sm join-item ${rightDrawerOpen ? 'btn-active' : ''}`}
                 onClick={() => actions.setRightDrawer(!rightDrawerOpen)}
-                title="Toggle right panel"
+                title={rightDrawerOpen ? 'Close right panel' : 'Open right panel'}
               >
                 <Icon icon="mdi:dock-right" className="text-lg" />
               </button>

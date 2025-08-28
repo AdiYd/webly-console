@@ -6,7 +6,8 @@ import PageParser from '@/components/pageParser/pageParser';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
 import { stat } from 'fs';
-import { TextEditingPageParser } from '@/components/pageParser/pageParserTextEditing';
+import { TextEditingPageParser } from '@/components/pageParser/text/pageParserTextEditing';
+import { ImageEditingPageParser } from '@/components/pageParser/image/pageParserImageEditing';
 
 export function EnhancedPageParser() {
   const { state, actions } = useEditor();
@@ -30,7 +31,7 @@ export function EnhancedPageParser() {
   const handleSectionClick = useCallback(
     (sectionId: string) => {
       if (editingMode !== 'preview') {
-        actions.setSelectedSection(sectionId === selectedSectionId ? null : sectionId);
+        actions.setSelectedSection(sectionId === selectedSectionId ? null : sectionId, true);
       }
     },
     [editingMode, selectedSectionId, actions]
@@ -38,7 +39,7 @@ export function EnhancedPageParser() {
 
   const handleSectionEdit = useCallback(
     (sectionId: string) => {
-      actions.setSelectedSection(sectionId);
+      actions.setSelectedSection(sectionId, true);
       actions.setIsEditing(true);
 
       // TODO: Open appropriate editing modal/drawer based on editing mode
@@ -46,6 +47,18 @@ export function EnhancedPageParser() {
     },
     [editingMode, actions]
   );
+
+  let parser = <PageParser />;
+  switch (editingMode) {
+    case 'text':
+      parser = <TextEditingPageParser />;
+      break;
+    case 'image':
+      parser = <ImageEditingPageParser />;
+      break;
+    default:
+      break;
+  }
 
   const renderEditingOverlays = () => {
     if (!isEditingOverlayVisible) return null;
@@ -148,74 +161,13 @@ export function EnhancedPageParser() {
       {/* Page Parser Container */}
       <div ref={parserRef} className="relative">
         {state.screenMode === 'mobile' && (
-          <div className="absolute z-[9999] top-4 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white border-[10px] border-black"></div>
+          <div className="absolute z-[200] top-4 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white border-[10px] border-black"></div>
         )}
-        {state.editingMode === 'text' ? <TextEditingPageParser /> : <PageParser />}
+        {parser}
 
         {/* Editing Overlays */}
         {/* {renderEditingOverlays()} */}
       </div>
-
-      {/* Mode Indicator */}
-      {/* <AnimatePresence>
-        {editingMode !== 'preview' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute top-4 left-4 bg-base-100 border border-base-300 rounded-lg px-3 py-2 shadow-lg z-20"
-          >
-            <div className="flex items-center gap-2">
-              <Icon icon={getEditingModeIcon(editingMode)} className="text-lg text-primary" />
-              <span className="text-sm font-medium text-base-content capitalize">
-                {editingMode} Mode
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence> */}
-
-      {/* Quick Actions */}
-      {/* <AnimatePresence>
-        {selectedSectionId && editingMode !== 'preview' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-4 right-4 bg-base-100 border border-base-300 rounded-lg p-3 shadow-lg z-20"
-          >
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleSectionEdit(selectedSectionId)}
-                className="btn btn-primary btn-sm gap-2"
-              >
-                <Icon icon="mdi:pencil" className="text-sm" />
-                Edit
-              </button>
-              <button
-                onClick={() => {
-                  // TODO: Duplicate section
-                  console.log('Duplicate section', selectedSectionId);
-                }}
-                className="btn btn-ghost btn-sm btn-square"
-                title="Duplicate"
-              >
-                <Icon icon="mdi:content-copy" className="text-sm" />
-              </button>
-              <button
-                onClick={() => {
-                  // TODO: Delete section
-                  console.log('Delete section', selectedSectionId);
-                }}
-                className="btn btn-error btn-sm btn-square"
-                title="Delete"
-              >
-                <Icon icon="mdi:delete" className="text-sm" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence> */}
 
       {/* Loading Overlay */}
       {state.isLoading && (

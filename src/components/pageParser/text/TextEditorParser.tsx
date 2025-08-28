@@ -176,10 +176,15 @@ export function finalizeHtmlFromTextEditing(html: string, textContentMap: TextCo
         element.textContent = contentData.currentText;
       }
       // If text wasn't changed, leave the original HTML structure intact
-
+      if (contentData.currentText !== contentData.originalText) {
+        element.classList.add('text-wrap'); // Optional: add classes for better text wrapping
+        element.classList.add('break-words'); // Optional: add classes for better text wrapping
+        element.classList.add('overflow-hidden');
+      }
       element.removeAttribute('data-key');
       element.removeAttribute('contenteditable');
       element.removeAttribute('data-text-editable');
+      element.removeAttribute('data-original-text');
     }
   });
 

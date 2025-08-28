@@ -9,6 +9,8 @@ import { ChatInterface } from './chat/ChatInterface';
 import { EnhancedPageParser } from './parser/EnhancedPageParser';
 import { ResizeHandle } from './layout/ResizeHandle';
 import BlurDecoratives from '@/components/layout/blurDecoratives';
+import { Toast, useToast } from '@/components/ui/notifier/use-toast';
+import { useEffect } from 'react';
 
 interface EditorProps {
   className?: string;
@@ -16,6 +18,7 @@ interface EditorProps {
 
 function EditorContent() {
   const { state, actions } = useEditor();
+  const { showToast, hideToast, toast } = useToast();
   const { chatVisible, chatWidth, leftDrawerOpen, rightDrawerOpen, editingMode, isLoading } = state;
 
   const handleChatResize = (newWidth: number) => {
@@ -29,6 +32,12 @@ function EditorContent() {
       </div>
     );
   }
+  // Show welcome toast once on mount
+  useEffect(() => {
+    // showToast is stable (useCallback in hook), so safe to include in deps
+    showToast(`Editing ${state.currentPage.page_name}`, 'success', 4000);
+    // we intentionally want this to run once on mount so deps are [showToast]
+  }, [showToast]);
 
   return (
     <div className="flex flex-col h-screen bg-base-100 overflow-hidden">

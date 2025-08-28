@@ -8,6 +8,7 @@ import {
   useEffect,
   ReactNode,
   useRef,
+  useState,
 } from 'react';
 import {
   Website,
@@ -18,6 +19,8 @@ import {
   examplePage2,
 } from '@/types/mock';
 import { daisyThemeName } from '@/types/schemaOld';
+import { useToast } from '@/components/ui/notifier/use-toast';
+import { stat } from 'fs';
 
 export type EditingMode = 'preview' | 'text' | 'image' | 'theme' | 'layout' | 'ai';
 
@@ -32,6 +35,7 @@ export interface EditorState {
   // Editor state
   editingMode: EditingMode;
   selectedSectionId: string | null;
+  scrollToSection: boolean;
   isEditing: boolean;
   hasUnsavedChanges: boolean;
   screenMode: 'desktop' | 'tablet' | 'mobile';
@@ -49,6 +53,9 @@ export interface EditorState {
   // Loading states
   isLoading: boolean;
   isSaving: boolean;
+
+  textEditorSaveCallback: (() => void) | null;
+  imageEditorSaveCallback: (() => void) | null;
 }
 
 type EditorAction =
@@ -59,7 +66,7 @@ type EditorAction =
   | { type: 'SET_DAISY_THEME'; payload: daisyThemeName }
   | { type: 'SET_EDITING_MODE'; payload: EditingMode }
   | { type: 'SET_SCREEN_MODE'; payload: 'desktop' | 'tablet' | 'mobile' }
-  | { type: 'SET_SELECTED_SECTION'; payload: string | null }
+  | { type: 'SET_SELECTED_SECTION'; payload: { sectionId: string | null; fromClick: boolean } }
   | { type: 'SET_IS_EDITING'; payload: boolean }
   | { type: 'SET_UNSAVED_CHANGES'; payload: boolean }
   | { type: 'SET_CHAT_VISIBLE'; payload: boolean }
@@ -76,7 +83,9 @@ type EditorAction =
   | { type: 'MOVE_SECTION'; payload: { sectionId: string; direction: 'up' | 'down' } }
   | { type: 'DUPLICATE_SECTION'; payload: { sectionId: string } }
   | { type: 'REORDER_SECTION'; payload: { sectionId: string; newIndex: number } }
-  | { type: 'DELETE_SECTION'; payload: { sectionId: string } };
+  | { type: 'DELETE_SECTION'; payload: { sectionId: string } }
+  | { type: 'SET_TEXT_EDITOR_SAVE_CALLBACK'; payload: (() => void) | null }
+  | { type: 'SET_IMAGE_EDITOR_SAVE_CALLBACK'; payload: (() => void) | null };
 
 const initialTheme: Partial<WebsiteTheme> = {
   colors: {
@@ -112,11 +121,12 @@ const initialState: EditorState = {
   website: exampleWebsite,
   currentPage: examplePage2,
   currentPageId: 'landing-page',
-  theme: initialTheme,
+  theme: exampleWebsite.design.theme || initialTheme,
   daisyTheme: 'webly-light',
   editingMode: 'preview',
   screenMode: 'desktop',
   selectedSectionId: null,
+  scrollToSection: false,
   isEditing: false,
   hasUnsavedChanges: false,
   chatVisible: true,
@@ -127,6 +137,8 @@ const initialState: EditorState = {
   historyIndex: -1,
   isLoading: false,
   isSaving: false,
+  textEditorSaveCallback: null,
+  imageEditorSaveCallback: null,
 };
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
@@ -158,11 +170,17 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'SET_EDITING_MODE':
       return { ...state, editingMode: action.payload };
 
+    case 'SET_TEXT_EDITOR_SAVE_CALLBACK':
+      return { ...state, textEditorSaveCallback: action.payload };
     case 'SET_SCREEN_MODE':
       return { ...state, screenMode: action.payload };
 
     case 'SET_SELECTED_SECTION':
-      return { ...state, selectedSectionId: action.payload };
+      return {
+        ...state,
+        selectedSectionId: action.payload?.sectionId,
+        scrollToSection: action.payload?.fromClick,
+      };
 
     case 'SET_IS_EDITING':
       return { ...state, isEditing: action.payload };
@@ -212,7 +230,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'SAVE_TO_HISTORY':
       return {
         ...state,
-        history: [...state.history.slice(0, state.historyIndex + 1), { ...state }],
+        history: [...state.history, { ...state }].slice(-10),
         historyIndex: state.historyIndex + 1,
       };
 
@@ -312,6 +330,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         currentPage: { ...state.currentPage, sections: filteredSections },
         hasUnsavedChanges: true,
       };
+    case 'SET_IMAGE_EDITOR_SAVE_CALLBACK':
+      return { ...state, imageEditorSaveCallback: action.payload };
     default:
       return state;
   }
@@ -343,7 +363,7 @@ interface EditorContextType {
     setDaisyTheme: (theme: daisyThemeName) => void;
     setEditingMode: (mode: EditingMode) => void;
     setScreenMode: (mode: 'desktop' | 'tablet' | 'mobile') => void;
-    setSelectedSection: (sectionId: string | null) => void;
+    setSelectedSection: (sectionId: string | null, fromClick: boolean) => void;
     setIsEditing: (editing: boolean) => void;
     setChatVisible: (visible: boolean) => void;
     setChatWidth: (width: number) => void;
@@ -359,6 +379,8 @@ interface EditorContextType {
     undo: () => void;
     redo: () => void;
     handleSave: () => Promise<void>;
+    setTextEditorSaveCallback: (callback: (() => void) | null) => void;
+    setImageEditorSaveCallback: (callback: (() => void) | null) => void;
   };
 }
 
@@ -367,6 +389,8 @@ const EditorContext = createContext<EditorContextType | undefined>(undefined);
 export function EditorProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(editorReducer, initialState, initializer);
   const initialRender = useRef(true);
+  const { showToast, toast } = useToast();
+  const prevEditingMode = useRef<EditingMode | null>(null);
 
   useEffect(() => {
     const {
@@ -399,6 +423,16 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, [state]);
 
   useEffect(() => {
+    if (prevEditingMode.current === 'text' && state.editingMode !== 'text') {
+      if (state.textEditorSaveCallback && typeof state.textEditorSaveCallback === 'function') {
+        state.textEditorSaveCallback();
+      }
+    }
+    if (prevEditingMode.current === 'image' && state.editingMode !== 'image') {
+      if (state.imageEditorSaveCallback && typeof state.imageEditorSaveCallback === 'function') {
+        state.imageEditorSaveCallback();
+      }
+    }
     if (initialRender.current) {
       setTimeout(() => {
         initialRender.current = false;
@@ -406,14 +440,28 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (state.editingMode === 'theme') {
+      showToast(
+        `You can change colors, fonts and other design parameters now, use the right panel`,
+        'success',
+        5000
+      );
       actions.setRightDrawer(true);
-    } else if (state.editingMode === 'preview') {
+    }
+    if (state.editingMode === 'text') {
+      showToast(`You can edit the text now, click on the text you want to edit`, 'success', 5000);
+    }
+    if (state.editingMode === 'image') {
+      showToast(`You can edit images now, hover and click on images to edit them`, 'success', 5000);
+    }
+    if (state.editingMode === 'preview') {
+      showToast(`Switched to '${state.editingMode}' mode`, 'success', 2000);
       actions.setRightDrawer(false);
       actions.setLeftDrawer(false);
-      actions.setSelectedSection(null);
+      // actions.setSelectedSection(null);
       actions.setIsEditing(false);
       actions.setChatVisible(false);
     }
+    prevEditingMode.current = state.editingMode;
   }, [state.editingMode]);
 
   // Actions
@@ -430,10 +478,16 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setTheme = useCallback((theme: Partial<WebsiteTheme>) => {
+    if (theme) {
+      showToast(`Updated theme`, 'success', 2000);
+    }
     dispatch({ type: 'SET_THEME', payload: theme });
   }, []);
 
   const setDaisyTheme = useCallback((theme: daisyThemeName) => {
+    if (theme) {
+      showToast(`Switched to '${theme}' theme`, 'success', 2000);
+    }
     dispatch({ type: 'SET_DAISY_THEME', payload: theme });
   }, []);
 
@@ -441,12 +495,18 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_EDITING_MODE', payload: mode });
   }, []);
 
-  const setScreenMode = useCallback((mode: 'desktop' | 'tablet' | 'mobile') => {
-    dispatch({ type: 'SET_SCREEN_MODE', payload: mode });
-  }, []);
+  const setScreenMode = useCallback(
+    (mode: 'desktop' | 'tablet' | 'mobile') => {
+      if (mode !== state.screenMode) {
+        showToast(`Showing ${mode} screen mode`, 'success', 2000);
+      }
+      dispatch({ type: 'SET_SCREEN_MODE', payload: mode });
+    },
+    [state.screenMode]
+  );
 
-  const setSelectedSection = useCallback((sectionId: string | null) => {
-    dispatch({ type: 'SET_SELECTED_SECTION', payload: sectionId });
+  const setSelectedSection = useCallback((sectionId: string | null, fromClick: boolean = false) => {
+    dispatch({ type: 'SET_SELECTED_SECTION', payload: { sectionId, fromClick } });
   }, []);
 
   const setIsEditing = useCallback((editing: boolean) => {
@@ -470,6 +530,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetState = useCallback(() => {
+    showToast(`Resetting state...`, 'error', 2000);
     dispatch({ type: 'RESET_STATE' });
   }, []);
 
@@ -505,11 +566,16 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'REDO' });
   }, []);
 
+  const setTextEditorSaveCallback = useCallback((callback: (() => void) | null) => {
+    dispatch({ type: 'SET_TEXT_EDITOR_SAVE_CALLBACK', payload: callback });
+  }, []);
+
   const handleSave = useCallback(async () => {
+    showToast(`Saving...`, 'info', 2000);
     dispatch({ type: 'SET_SAVING', payload: true });
 
     try {
-      // Simulate save operation
+      // Simulate save operation to backend or localStorage
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       console.log('Saving website context:', {
@@ -528,6 +594,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_SAVING', payload: false });
     }
   }, [state.website, state.currentPage, state.theme]);
+
+  const setImageEditorSaveCallback = useCallback((callback: (() => void) | null) => {
+    dispatch({ type: 'SET_IMAGE_EDITOR_SAVE_CALLBACK', payload: callback });
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -579,9 +649,16 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     undo,
     redo,
     handleSave,
+    setTextEditorSaveCallback,
+    setImageEditorSaveCallback,
   };
 
-  return <EditorContext.Provider value={{ state, actions }}>{children}</EditorContext.Provider>;
+  return (
+    <EditorContext.Provider value={{ state, actions }}>
+      {toast}
+      {children}
+    </EditorContext.Provider>
+  );
 }
 
 export function useEditor() {

@@ -5,6 +5,9 @@ import { Icon } from '@iconify/react';
 import { fallbackPage, themeIconify } from './utils';
 import { WebsitePage, WebsiteTheme } from '@/types/mock';
 import { useEditor } from '@/editor/context/EditorContext';
+import './parser.css';
+import { textEditingBridgeScript } from './text/pageParserTextEditing';
+import { imageEditingBridgeScript } from './image/pageParserImageEditing';
 
 export const fontOptions = [
   { name: 'Inter', preview: 'Modern & Clean' },
@@ -21,7 +24,7 @@ export const fontOptions = [
 ];
 
 // Lightweight iframe -> parent bridge script
-const iframeBridgeScript = `
+export const iframeBridgeScript = `
 <script>
 (function () {
   function send(type, payload, requestId) {
@@ -128,167 +131,11 @@ const iframeBridgeScript = `
 <\/script>
 `;
 
-export const textEditingBridgeScript = `
-<script>
-(function () {
-  // Don't initialize if already initialized
-  if (window.textEditingInitialized) return;
-  window.textEditingInitialized = true;
-
-  // Inherit base bridge functionality
-  function send(type, payload, requestId) {
-    try { 
-      parent.postMessage({ 
-        weblyIframe: true, 
-        type: type, 
-        payload: payload || null, 
-        requestId: requestId || null 
-      }, '*'); 
-    } catch(e) {
-      console.warn('Bridge send error:', e);
-    }
-  }
-
-  // Text editing specific functionality
-  let textEditingMode = false;
-  let textChangedElements = new Set();
-  let debounceTimer = null;
-
-  function initializeTextEditing() {
-    if (textEditingMode) return; // Already initialized
-    textEditingMode = true;
-    
-    console.log('Initializing text editing mode');
-
-    // Set up text change listeners with better event handling
-    document.addEventListener('input', handleTextInput, true);
-    document.addEventListener('blur', handleTextBlur, true);
-    document.addEventListener('paste', handleTextPaste, true);
-    document.addEventListener('focus', handleTextFocus, true);
-
-    // Add placeholders for empty editable elements
-    document.querySelectorAll('[data-text-editable="true"]').forEach(element => {
-      if (!element.textContent.trim()) {
-        element.setAttribute('data-placeholder', 'Click to edit...');
-      }
-    });
-
-    send('response:textEditingEnabled', { success: true });
-  }
-
-  function handleTextFocus(e) {
-    const element = e.target;
-    if (!element.hasAttribute('data-key')) return;
-    
-    // Clear placeholder styling on focus
-    element.style.opacity = '1';
-  }
-
-  function handleTextInput(e) {
-    const element = e.target;
-    if (!element.hasAttribute('data-key')) return;
-
-    textChangedElements.add(element.getAttribute('data-key'));
-    
-    // Debounce text change notifications
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      sendTextChanges();
-    }, 300);
-  }
-
-  function handleTextBlur(e) {
-    const element = e.target;
-    if (!element.hasAttribute('data-key')) return;
-    
-    // Send immediate update on blur
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
-    }
-    sendTextChanges();
-  }
-
-  function handleTextPaste(e) {
-    const element = e.target;
-    if (!element.hasAttribute('data-key')) return;
-
-    // Allow paste but clean it up
-    setTimeout(() => {
-      // Clean up pasted content - remove unwanted formatting
-      const text = element.textContent || '';
-      if (text !== element.textContent) {
-        element.textContent = text;
-      }
-      
-      textChangedElements.add(element.getAttribute('data-key'));
-      sendTextChanges();
-    }, 10);
-  }
-
-  function sendTextChanges() {
-    if (textChangedElements.size === 0) return;
-
-    const changes = {};
-    textChangedElements.forEach(dataKey => {
-      const element = document.querySelector(\`[data-key="\${dataKey}"]\`);
-      if (element) {
-        changes[dataKey] = element.textContent || '';
-      }
-    });
-
-    send('text:changed', { changes });
-    textChangedElements.clear();
-  }
-
-  // Listen for parent messages
-  window.addEventListener('message', (e) => {
-    try {
-      const data = e.data;
-      if (!data || !data.fromParent) return;
-
-      if (data.type === 'command:enableTextEditing') {
-        initializeTextEditing();
-      }
-
-      if (data.type === 'command:updateText') {
-        const { dataKey, newText } = data.payload || {};
-        if (dataKey) {
-          const element = document.querySelector(\`[data-key="\${dataKey}"]\`);
-          if (element) {
-            element.textContent = newText || '';
-            send('response:textUpdated', { dataKey, success: true });
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Text editing bridge error:', err);
-    }
-  });
-
-  // Auto-initialize if elements are already present
-  function checkAndInitialize() {
-    if (document.querySelector('[data-text-editable="true"]')) {
-      initializeTextEditing();
-    }
-  }
-
-  // Initialize based on document state
-  if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', checkAndInitialize);
-  } else {
-    // Use setTimeout to ensure DOM is fully rendered
-    setTimeout(checkAndInitialize, 100);
-  }
-})();
-<\/script>
-`;
-
 export const getPageHtml = (
   page: WebsitePage,
   theme: Partial<WebsiteTheme>,
   daisyTheme: daisyThemeName,
-  textEditing: boolean = false
+  editMode?: 'text' | 'image' | null
 ) => {
   // Compose all sections' HTML and JS
   if (!page || !page.sections || page.sections.length === 0) {
@@ -395,8 +242,9 @@ export const getPageHtml = (
         ${sectionsJs}
 
         <!-- Iframe Bridge Script -->
-          ${iframeBridgeScript}
-        ${textEditing ? textEditingBridgeScript : ''}
+        ${iframeBridgeScript}
+        ${editMode === 'text' ? textEditingBridgeScript : ''}
+        ${editMode === 'image' ? imageEditingBridgeScript : ''}
       </body>
 
     </html>
@@ -408,7 +256,7 @@ const PageParser = () => {
   const [iframeContents, setIframeContents] = useState(['', '']);
   const [ignoreNextLoad, setIgnoreNextLoad] = useState(false);
   const {
-    state: { theme, currentPage, daisyTheme, selectedSectionId, editingMode },
+    state: { theme, currentPage, daisyTheme, selectedSectionId, editingMode, scrollToSection },
     actions,
   } = useEditor();
   const page = useMemo(() => ({ ...currentPage }), [currentPage]);
@@ -418,7 +266,7 @@ const PageParser = () => {
 
   // Generate HTML and update iframe contents
   useEffect(() => {
-    const html = getPageHtml(page, theme, daisyTheme, editingMode === 'text');
+    const html = getPageHtml(page, theme, daisyTheme);
     const newContents = [...iframeContents];
     const inactiveIndex = activeIframeIndex === 0 ? 1 : 0;
 
@@ -456,7 +304,7 @@ const PageParser = () => {
     const iframe = iframeRefs[activeIframeIndex].current;
     if (iframe && selectedSectionId) {
       const section = iframe.contentDocument?.getElementById(selectedSectionId);
-      if (section && !ignoreNextLoad) {
+      if (section && scrollToSection) {
         setIgnoreNextLoad(true);
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => setIgnoreNextLoad(false), 1000);
@@ -487,7 +335,7 @@ const PageParser = () => {
       if (data.type === 'section:enter') {
         console.log('User entered section:', data.payload.id);
         if (!ignoreNextLoad) {
-          actions.setSelectedSection(data.payload.id);
+          actions.setSelectedSection(data.payload.id, false);
         }
         // do what you want with section id
       }

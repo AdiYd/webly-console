@@ -101,15 +101,15 @@ export function ChatInterface() {
   return (
     <div className="h-full flex flex-col backdrop-blur-xl">
       {/* Header */}
-      <div className="p-4 pb-3 border-b border-zinc-400/40 z-20 bg-base-100/65 backdrop-blur-sm">
+      <div className="p-3 pb-1 border-b border-zinc-400/40 z-20 bg-base-100/65 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-primary flex items-center justify-center rounded-full w-8 h-8 relative mask mask-circle">
+            <div className="bg-primary flex items-center justify-center rounded-full w-6 h-6 relative mask mask-circle">
               <div className="circle-bg" />
             </div>
             <div className="flex flex-wrap items-baseline gap-2">
-              <h3 className="font-semibold text-base-content">Webly's Assistant</h3>
-              <p className="text-xs text-base-content/60">{isTyping ? 'Typing...' : 'Online'}</p>
+              <h2 className="font-semibold text-base-content">Webly's Assistant</h2>
+              {isTyping && <p className="text-xs text-base-content/60">Typing...</p>}
             </div>
           </div>
 

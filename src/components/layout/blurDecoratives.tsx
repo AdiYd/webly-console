@@ -21,6 +21,14 @@ const BlurDecoratives = () => {
             : 'from-orange-300/40 to-violet-400/40'
         } blur-[200px]`}
       />
+      {/* Center Decorative */}
+      <div
+        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40vw] h-[45vh] rounded-full bg-gradient-to-r pointer-events-none -z-1 ${
+          isDarkTheme
+            ? 'from-violet-600/80 via-indigo-400/80 to-sky-400/85'
+            : 'from-pink-300/40 via-purple-200/55 to-sky-300/70'
+        } blur-[190px] opacity-90`}
+      />
       <div
         style={{}}
         className={`absolute bottom-0 right-[-30%] w-1/2 h-1/5 rounded-full bg-gradient-to-r ${

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
@@ -113,6 +113,18 @@ function PropertiesPanel() {
   const { state } = useEditor();
   const { selectedSectionId, currentPage } = state;
 
+  const allAssets = useMemo(() => {
+    if (!selectedSectionId) return [];
+    const section = currentPage.sections.find(s => s.id === selectedSectionId);
+    // Extract all asset URLs from the section (html string)
+    const images =
+      section?.src?.html
+        ?.match(/<img[^>]+src="([^">]+)"/g)
+        ?.map(img => img.match(/src="([^">]+)/)?.[1]) || [];
+
+    return Array.from(new Set([...images].filter(Boolean)));
+  }, [currentPage, selectedSectionId]);
+
   const selectedSection = currentPage.sections.find(s => s.id === selectedSectionId);
 
   if (!selectedSection) {
@@ -174,21 +186,21 @@ function PropertiesPanel() {
         />
       </div>
 
-      {selectedSection.used_assets && selectedSection.used_assets.length > 0 && (
+      {allAssets.length > 0 && (
         <div>
           <label className="label">
             <span className="label-text font-medium">Used Assets</span>
           </label>
           <div className="space-y-2">
-            {selectedSection.used_assets.map((asset, index) => (
+            {allAssets.map((asset, index) => (
               <img
                 key={index}
                 src={asset}
                 alt={`Image ${index + 1}`}
                 className="w-full h-auto rounded-lg"
-                onError={e => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
+                // onError={e => {
+                //   (e.target as HTMLImageElement).style.display = 'none';
+                // }}
               />
             ))}
           </div>

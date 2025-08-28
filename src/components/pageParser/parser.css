@@ -1,0 +1,14 @@
+/* Add into the <style> block injected into the iframe (getPageHtml) */
+.webly-disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  transition: opacity 120ms ease;
+  /* don't remove pointer-events globally: we prevent clicks with capture handler and remove href/disable native props */
+}
+
+.webly-text-focused {
+  outline: 3px solid rgba(59, 130, 246, 0.9);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12);
+  border-radius: 6px;
+  transition: box-shadow 140ms ease, outline-color 140ms ease;
+}

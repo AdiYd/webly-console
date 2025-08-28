@@ -3,22 +3,38 @@
 import { motion } from 'framer-motion';
 import { Icon } from '@/components/ui/icon';
 import { useEditor } from '../../context/EditorContext';
+import { Dialog, useDialog } from '@/components/ui/notifier/use-dialog';
 
 export function LeftSidebar() {
   const { state, actions } = useEditor();
+  const { showDialog, ...dialogState } = useDialog();
   const { currentPage, selectedSectionId, editingMode } = state;
 
   const handleSectionSelect = (sectionId: string) => {
-    actions.setSelectedSection(selectedSectionId === sectionId ? null : sectionId);
+    actions.setSelectedSection(selectedSectionId === sectionId ? null : sectionId, true);
   };
 
   const addNewSection = () => {
     // TODO: Implement add new section
+    showDialog('Add New Sectionddddd');
     console.log('Add new section');
   };
 
   return (
     <div className="h-full flex flex-col">
+      <Dialog {...dialogState}>
+        <div className="p-4">
+          <h2 className="text-lg font-semibold mb-2">Feature Coming Soon!</h2>
+          <p className="text-base-content/70">
+            The section management feature is under development and will be available soon.
+          </p>
+          <div className="mt-4 text-right">
+            <button className="btn btn-primary" onClick={() => dialogState.onClose()}>
+              Close
+            </button>
+          </div>
+        </div>
+      </Dialog>
       {/* Header */}
       <div className="p-4 border-b border-zinc-400/50 z-20 bg-base-100/65 backdrop-blur-sm">
         <div className="flex items-center justify-between">
