@@ -61,7 +61,7 @@ export function preparePageForImageEditing(page: any): {
       // Add data attributes for image editing
       return match.replace(
         /<img/,
-        `<img data-key="${dataKey}" data-image-editable="true" data-original-classes="${classes}"`
+        `<img data-key="${dataKey}" style="position: relative;" data-image-editable="true" data-original-classes="${classes}"`
       );
     });
 
@@ -88,7 +88,7 @@ export function preparePageForImageEditing(page: any): {
 
       return match.replace(
         /<video/,
-        `<video data-key="${dataKey}" data-image-editable="true" data-original-classes="${classes}"`
+        `<video data-key="${dataKey}" style="position: relative;" data-image-editable="true" data-original-classes="${classes}"`
       );
     });
 
@@ -108,63 +108,103 @@ export function finalizePageFromImageEditing(
   modifiedPage: any,
   imageContentMap: ImageContentMap
 ): any {
+  console.log('Starting image finalization process');
+
+  // Deep clone to avoid mutations
   const finalPage = JSON.parse(JSON.stringify(modifiedPage));
+
+  // Track changes for logging
+  let changedImages = 0;
 
   finalPage.sections = finalPage.sections.map((section: any) => {
     if (!section.src?.html) return section;
 
     let finalHtml = section.src.html;
 
-    // Apply only changed image properties
-    Object.entries(imageContentMap).forEach(([dataKey, imageData]) => {
-      if (imageData.sectionId !== section.id) return;
+    // Find all data-key attributes to ensure we process all image elements
+    const dataKeyRegex = /data-key="([^"]+)"/g;
+    let match;
+    const processedKeys = new Set();
 
-      // Skip if no changes were made to this image
+    while ((match = dataKeyRegex.exec(finalHtml)) !== null) {
+      const dataKey = match[1];
+      if (processedKeys.has(dataKey)) continue;
+      processedKeys.add(dataKey);
+
+      const imageData = imageContentMap[dataKey];
+      if (!imageData || imageData.sectionId !== section.id) continue;
+
+      // Check if this image has changes
       const hasChanges =
         imageData.currentSrc !== imageData.originalSrc ||
         imageData.currentAlt !== imageData.originalAlt ||
         imageData.currentClasses !== imageData.originalClasses;
 
-      if (!hasChanges) return;
+      if (hasChanges) {
+        changedImages++;
+        console.log(`Applying changes to image ${dataKey}:`, {
+          originalSrc: imageData.originalSrc,
+          newSrc: imageData.currentSrc,
+          originalAlt: imageData.originalAlt,
+          newAlt: imageData.currentAlt,
+          originalClasses: imageData.originalClasses,
+          newClasses: imageData.currentClasses,
+        });
+      }
 
-      const dataKeyRegex = new RegExp(`data-key="${dataKey}"[^>]*>`, 'g');
+      // Replace the element in HTML with updated attributes
+      const elementRegex = new RegExp(`<(img|video)[^>]*data-key="${dataKey}"[^>]*>`, 'g');
 
-      finalHtml = finalHtml.replace(dataKeyRegex, (match: string) => {
-        let updatedMatch = match;
+      finalHtml = finalHtml.replace(elementRegex, (elementMatch: string) => {
+        let updatedElement = elementMatch;
 
-        // Update src only if changed
-        if (imageData.currentSrc !== imageData.originalSrc) {
-          updatedMatch = updatedMatch.replace(/src="[^"]*"/, `src="${imageData.currentSrc}"`);
-        }
+        // Apply changes only if there are any
+        if (hasChanges) {
+          // Update src attribute
+          if (imageData.currentSrc !== imageData.originalSrc) {
+            updatedElement = updatedElement.replace(/src="[^"]*"/, `src="${imageData.currentSrc}"`);
+          }
 
-        // Update alt for images only if changed
-        if (imageData.elementType === 'img' && imageData.currentAlt !== imageData.originalAlt) {
-          if (match.includes('alt="')) {
-            updatedMatch = updatedMatch.replace(/alt="[^"]*"/, `alt="${imageData.currentAlt}"`);
-          } else {
-            updatedMatch = updatedMatch.replace(
-              /data-key="[^"]*"/,
-              `alt="${imageData.currentAlt}" data-key="${dataKey}"`
-            );
+          // Update alt attribute for images
+          if (imageData.elementType === 'img' && imageData.currentAlt !== imageData.originalAlt) {
+            if (updatedElement.includes('alt="')) {
+              updatedElement = updatedElement.replace(
+                /alt="[^"]*"/,
+                `alt="${imageData.currentAlt}"`
+              );
+            } else {
+              updatedElement = updatedElement.replace(
+                /data-key=/,
+                `alt="${imageData.currentAlt}" data-key=`
+              );
+            }
+          }
+
+          // Update class attribute
+          if (imageData.currentClasses !== imageData.originalClasses) {
+            if (updatedElement.includes('class="')) {
+              updatedElement = updatedElement.replace(
+                /class="[^"]*"/,
+                `class="${imageData.currentClasses}"`
+              );
+            } else {
+              updatedElement = updatedElement.replace(
+                /data-key=/,
+                `class="${imageData.currentClasses}" data-key=`
+              );
+            }
           }
         }
 
-        // Update classes only if changed
-        if (imageData.currentClasses !== imageData.originalClasses) {
-          updatedMatch = updatedMatch.replace(
-            /class="[^"]*"/,
-            `class="${imageData.currentClasses}"`
-          );
-        }
+        // Always remove editing-specific attributes
+        updatedElement = updatedElement.replace(/\s*data-key="[^"]*"/g, '');
+        updatedElement = updatedElement.replace(/\s*data-image-editable="[^"]*"/g, '');
+        updatedElement = updatedElement.replace(/\s*data-original-classes="[^"]*"/g, '');
+        updatedElement = updatedElement.replace(/\s*style="[^"]*"/g, '');
 
-        // Remove editing-specific attributes
-        updatedMatch = updatedMatch.replace(/\s*data-key="[^"]*"/g, '');
-        updatedMatch = updatedMatch.replace(/\s*data-image-editable="[^"]*"/g, '');
-        updatedMatch = updatedMatch.replace(/\s*data-original-classes="[^"]*"/g, '');
-
-        return updatedMatch;
+        return updatedElement;
       });
-    });
+    }
 
     return {
       ...section,
@@ -175,5 +215,6 @@ export function finalizePageFromImageEditing(
     };
   });
 
+  console.log(`Finalization complete: ${changedImages} images updated`);
   return finalPage;
 }

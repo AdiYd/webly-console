@@ -369,7 +369,7 @@ export function TextEditingPageParser() {
       const iframe = iframeRef.current;
       if (iframe && state.selectedSectionId) {
         const section = iframe.contentDocument?.getElementById(state.selectedSectionId);
-        console.log('Found section in iframe:', section, iframe.contentDocument);
+        // console.log('Found section in iframe:', section, iframe.contentDocument);
         if (section) {
           console.log('Scrolling to section:', state.selectedSectionId);
           section.scrollIntoView({ behavior: 'smooth', block: 'start' });

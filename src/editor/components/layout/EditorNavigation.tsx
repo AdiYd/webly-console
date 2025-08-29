@@ -94,15 +94,19 @@ export function EditorNavigation() {
             {/* History Controls */}
             <div className="join border* border-zinc-400/40*">
               <button
-                className="btn btn-ghost btn-sm join-item"
+                className="btn btn-ghost btn-sm join-item disabled:opacity-0"
                 onClick={actions.undo}
+                disabled={state.historyIndex < 0 && state.history.length === 0} // Can undo if we have history OR if we're at current state with history
                 title="Undo (Ctrl+Z)"
               >
                 <Icon icon="mdi:undo" className="text-lg" />
               </button>
               <button
-                className="btn btn-ghost btn-sm join-item"
+                className="btn btn-ghost btn-sm join-item disabled:opacity-0"
                 onClick={actions.redo}
+                disabled={
+                  state.historyIndex >= state.history.length - 1 || state.historyIndex === -1
+                } // Can't redo if at latest state or current state
                 title="Redo (Ctrl+Shift+Z)"
               >
                 <Icon icon="mdi:redo" className="text-lg" />

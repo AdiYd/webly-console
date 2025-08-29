@@ -284,7 +284,7 @@ const PageParser = () => {
 
       iframe.addEventListener('load', handleLoad);
     }
-  }, [daisyTheme, page, theme.colors, theme.radius, editingMode === 'text']);
+  }, [daisyTheme, page, theme?.colors, theme?.radius, editingMode === 'text']);
 
   // Change typography font family
   useEffect(() => {
@@ -319,6 +319,12 @@ const PageParser = () => {
       // optional: verify source is one of our iframe windows
       const iframeWindows = iframeRefs.map(r => r.current?.contentWindow).filter(Boolean);
       if (iframeWindows.length && !iframeWindows.includes(e.source as Window)) return;
+
+      // Handle specific image editing messages to ensure they're saved
+      if (e.data.type === 'image:editRequest' || e.data.type === 'response:imageUpdated') {
+        console.log('Image edit message received:', e.data);
+      }
+
       // re-dispatch as CustomEvent for app-level listeners
       try {
         window.dispatchEvent(new CustomEvent('webly:iframe:event', { detail: e.data }));

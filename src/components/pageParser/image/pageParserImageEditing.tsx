@@ -9,6 +9,7 @@ import {
   ImageContentMap,
 } from './ImageEditorParser';
 import { ImageEditDialog } from './ImageEditDialog';
+import { Icon } from '@iconify/react/dist/iconify.js';
 
 export const imageEditingBridgeScript = `
 <script>
@@ -205,10 +206,10 @@ export const imageEditingBridgeScript = `
     if (!isEditableImage(element)) return;
     
     element.style.transform = 'scale(1.05)';
-    element.style.border = '3px solid #3B82F6';
+    element.style.border = '3px dashed #cf6311';
     element.style.transition = 'all 0.2s ease';
+    element.style.cursor = 'pointer';
     element.style.zIndex = '1000';
-    element.style.position = 'relative';
     
     showImageOverlay(element);
   }
@@ -220,8 +221,8 @@ export const imageEditingBridgeScript = `
     element.style.transform = '';
     element.style.border = '';
     element.style.transition = '';
+    element.style.cursor = '';
     element.style.zIndex = '';
-    element.style.position = '';
     
     // Remove overlay
     removeImageOverlay(element);
@@ -438,6 +439,7 @@ export function ImageEditingPageParser() {
     classNames: string;
     elementType: string;
   } | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Prepare page for image editing when mode changes
   const preparedPageData = useRef<{
@@ -458,49 +460,94 @@ export function ImageEditingPageParser() {
     }, 500);
   }, [state.selectedSectionId]);
 
+  // Handle save button click
+  const handleSaveChanges = useCallback(() => {
+    if (!preparedPageData.current) return;
+
+    try {
+      console.log('Saving image changes...');
+
+      // Create the finalized version of the page with cleaned HTML
+      const finalizedPage = finalizePageFromImageEditing(
+        preparedPageData.current.modifiedPage,
+        imageContentMap
+      );
+
+      // Log the finalized page for debugging
+      console.log('Finalized page sections:', finalizedPage.sections);
+
+      // Update the global context with the cleaned and finalized page
+      actions.updateCurrentPage(finalizedPage);
+      actions.saveToHistory();
+
+      console.log('Image changes saved successfully to global context');
+      setHasUnsavedChanges(false);
+
+      // Show success message to user
+      // You could add a toast notification here
+    } catch (error) {
+      console.error('Error saving image changes:', error);
+      // Show error message to user
+    }
+  }, [imageContentMap, actions]);
+
+  // Reset image content map when entering image editing mode
   useEffect(() => {
     if (editingMode === 'image') {
       const { modifiedPage, globalImageContentMap } = preparePageForImageEditing(currentPage);
       preparedPageData.current = { modifiedPage, imageContentMap: globalImageContentMap };
       setImageContentMap(globalImageContentMap);
+      setHasUnsavedChanges(false);
     } else {
+      // When leaving image edit mode, clear state but don't save
       preparedPageData.current = null;
       setImageContentMap({});
       setIsImageEditingEnabled(false);
     }
   }, [editingMode, currentPage]);
 
-  // Create a stable reference to the save function
-  const saveImageChanges = useCallback(() => {
-    if (editingMode !== 'image' || !preparedPageData.current) return;
+  // Update the image content map when an image is edited
+  const handleImageEditSubmit = useCallback(
+    (updates: { src: string; alt: string; classNames: string }) => {
+      if (!editingImage) return;
 
-    try {
-      const finalizedPage = finalizePageFromImageEditing(
-        preparedPageData.current.modifiedPage,
-        imageContentMap
-      );
+      // Update local state
+      setImageContentMap(prev => {
+        const updated = { ...prev };
+        if (updated[editingImage.dataKey]) {
+          updated[editingImage.dataKey] = {
+            ...updated[editingImage.dataKey],
+            currentSrc: updates.src,
+            currentAlt: updates.alt,
+            currentClasses: updates.classNames,
+          };
+        }
+        return updated;
+      });
 
-      actions.updateCurrentPage(finalizedPage);
-      actions.saveToHistory();
+      // Flag that we have unsaved changes
+      setHasUnsavedChanges(true);
 
-      console.log('Image changes saved successfully');
-    } catch (error) {
-      console.error('Error saving image changes:', error);
-    }
-  }, [editingMode, imageContentMap, actions]);
+      // Send update to iframe for live preview
+      const iframe = iframeRef.current;
+      if (iframe) {
+        iframe.contentWindow?.postMessage(
+          {
+            fromParent: true,
+            type: 'command:updateImage',
+            payload: {
+              dataKey: editingImage.dataKey,
+              updates,
+            },
+          },
+          '*'
+        );
+      }
 
-  // Register save callback when entering image mode
-  useEffect(() => {
-    if (editingMode === 'image') {
-      actions.setImageEditorSaveCallback(saveImageChanges);
-    } else {
-      actions.setImageEditorSaveCallback(null);
-    }
-
-    return () => {
-      actions.setImageEditorSaveCallback(null);
-    };
-  }, [editingMode, saveImageChanges, actions]);
+      setEditingImage(null);
+    },
+    [editingImage]
+  );
 
   // Generate HTML with image editing capabilities
   const generateHtml = useCallback(() => {
@@ -568,46 +615,6 @@ export function ImageEditingPageParser() {
     }
   }, [editingMode]);
 
-  // Handle image edit submission
-  const handleImageEditSubmit = useCallback(
-    (updates: { src: string; alt: string; classNames: string }) => {
-      if (!editingImage) return;
-
-      // Update local state
-      setImageContentMap(prev => {
-        const updated = { ...prev };
-        if (updated[editingImage.dataKey]) {
-          updated[editingImage.dataKey] = {
-            ...updated[editingImage.dataKey],
-            currentSrc: updates.src,
-            currentAlt: updates.alt,
-            currentClasses: updates.classNames,
-          };
-        }
-        return updated;
-      });
-
-      // Send update to iframe
-      const iframe = iframeRef.current;
-      if (iframe) {
-        iframe.contentWindow?.postMessage(
-          {
-            fromParent: true,
-            type: 'command:updateImage',
-            payload: {
-              dataKey: editingImage.dataKey,
-              updates,
-            },
-          },
-          '*'
-        );
-      }
-
-      setEditingImage(null);
-    },
-    [editingImage]
-  );
-
   return (
     <div className="relative h-full w-full">
       {/* Iframe */}
@@ -627,13 +634,18 @@ export function ImageEditingPageParser() {
           onCancel={() => setEditingImage(null)}
         />
       )}
-    </div>
-  );
-}
-          image={editingImage}
-          onSubmit={handleImageEditSubmit}
-          onCancel={() => setEditingImage(null)}
-        />
+
+      {/* Floating Save Button - Only shown when there are unsaved changes */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-8 right-8 z-50">
+          <button
+            onClick={handleSaveChanges}
+            className="btn btn-primary btn-lg shadow-lg flex items-center gap-2"
+          >
+            <Icon icon="mdi:content-save" className="w-5 h-5" />
+            Save Changes
+          </button>
+        </div>
       )}
     </div>
   );

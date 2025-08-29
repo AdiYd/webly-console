@@ -228,21 +228,75 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, isSaving: action.payload };
 
     case 'SAVE_TO_HISTORY':
+      // Don't save if no changes or if we're already saving the current state
+      if (!state.hasUnsavedChanges) {
+        return state;
+      }
+
+      // If we're in the middle of history (after an undo), remove future states
+      const newHistory =
+        state.historyIndex >= 0 && state.historyIndex < state.history.length - 1
+          ? state.history.slice(0, state.historyIndex + 1)
+          : state.history;
+
+      // Create a clean snapshot without the history/index to avoid circular references
+      const { history, historyIndex, ...stateSnapshot } = state;
+
+      // Add current state and limit to 10 entries
+      const updatedHistory = [...newHistory, stateSnapshot] as EditorState[];
+      const limitedHistory =
+        updatedHistory.length > 10
+          ? updatedHistory.slice(updatedHistory.length - 10)
+          : updatedHistory;
+
       return {
         ...state,
-        history: [...state.history, { ...state }].slice(-10),
-        historyIndex: state.historyIndex + 1,
+        history: limitedHistory,
+        historyIndex: limitedHistory.length - 1, // Point to the newest entry
+        hasUnsavedChanges: false, // Reset since we just saved to history
       };
 
     case 'UNDO':
-      if (state.historyIndex > 0) {
-        return state.history[state.historyIndex - 1];
+      if (state.historyIndex >= 0) {
+        // If we're at current state (historyIndex === -1), first save current state to history
+        if (state.historyIndex === -1) {
+          const { history, historyIndex, ...stateSnapshot } = state;
+          const newHistory = [...history, stateSnapshot] as EditorState[];
+          const newIndex = newHistory.length - 2; // Go to previous state
+
+          if (newIndex >= 0) {
+            return {
+              ...newHistory[newIndex],
+              history: newHistory,
+              historyIndex: newIndex,
+              hasUnsavedChanges: true,
+            };
+          }
+          return state;
+        }
+
+        // Normal undo - go back one step
+        const newIndex = state.historyIndex - 1;
+        if (newIndex >= 0) {
+          return {
+            ...state.history[newIndex],
+            history: state.history,
+            historyIndex: newIndex,
+            hasUnsavedChanges: true,
+          };
+        }
       }
       return state;
 
     case 'REDO':
       if (state.historyIndex < state.history.length - 1) {
-        return state.history[state.historyIndex + 1];
+        const newIndex = state.historyIndex + 1;
+        return {
+          ...state.history[newIndex],
+          history: state.history,
+          historyIndex: newIndex,
+          hasUnsavedChanges: true,
+        };
       }
       return state;
 
@@ -252,11 +306,25 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
           ? { ...section, ...action.payload.section }
           : section
       );
-      return {
+      const updatedState = {
         ...state,
         currentPage: { ...state.currentPage, sections: updatedSections },
         hasUnsavedChanges: true,
       };
+
+      // Automatically save to history for major changes
+      return {
+        ...updatedState,
+        history: [
+          ...updatedState.history,
+          (() => {
+            const { history, historyIndex, ...snapshot } = state;
+            return snapshot;
+          })(),
+        ].slice(-10) as EditorState[], // Keep last 10 states
+        historyIndex: -1, // Reset to current state
+      };
+
     case 'MOVE_SECTION':
       const { sectionId, direction } = action.payload;
       const sections = state.currentPage.sections;
@@ -428,11 +496,12 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         state.textEditorSaveCallback();
       }
     }
-    if (prevEditingMode.current === 'image' && state.editingMode !== 'image') {
-      if (state.imageEditorSaveCallback && typeof state.imageEditorSaveCallback === 'function') {
-        state.imageEditorSaveCallback();
-      }
-    }
+    // if (prevEditingMode.current === 'image' && state.editingMode !== 'image') {
+    //   if (state.imageEditorSaveCallback && typeof state.imageEditorSaveCallback === 'function') {
+    //     console.log('Executing image editor save callback on mode change');
+    //     state.imageEditorSaveCallback();
+    //   }
+    // }
     if (initialRender.current) {
       setTimeout(() => {
         initialRender.current = false;
@@ -452,6 +521,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     }
     if (state.editingMode === 'image') {
       showToast(`You can edit images now, hover and click on images to edit them`, 'success', 5000);
+    }
+    if (state.editingMode === 'layout') {
+      showToast(`You can edit the layout now, and use AI to assist with changes`, 'success', 5000);
+      actions.setChatVisible(true);
     }
     if (state.editingMode === 'preview') {
       showToast(`Switched to '${state.editingMode}' mode`, 'success', 2000);
@@ -474,12 +547,14 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateCurrentPage = useCallback((updates: Partial<WebsitePage>) => {
+    dispatch({ type: 'SAVE_TO_HISTORY' });
     dispatch({ type: 'UPDATE_CURRENT_PAGE', payload: updates });
   }, []);
 
   const setTheme = useCallback((theme: Partial<WebsiteTheme>) => {
     if (theme) {
       showToast(`Updated theme`, 'success', 2000);
+      dispatch({ type: 'SAVE_TO_HISTORY' });
     }
     dispatch({ type: 'SET_THEME', payload: theme });
   }, []);
@@ -536,6 +611,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   const updateSection = useCallback((sectionId: string, section: any) => {
     dispatch({ type: 'UPDATE_SECTION', payload: { sectionId, section } });
+    dispatch({ type: 'UPDATE_SECTION', payload: { sectionId, section } });
   }, []);
 
   const moveSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
@@ -558,11 +634,13 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SAVE_TO_HISTORY' });
   }, []);
 
-  const undo = useCallback(() => {
+  const undo = useCallback(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
     dispatch({ type: 'UNDO' });
   }, []);
 
-  const redo = useCallback(() => {
+  const redo = useCallback(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
     dispatch({ type: 'REDO' });
   }, []);
 
@@ -595,6 +673,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     }
   }, [state.website, state.currentPage, state.theme]);
 
+  // Optimize setImageEditorSaveCallback to prevent unnecessary state updates
   const setImageEditorSaveCallback = useCallback((callback: (() => void) | null) => {
     dispatch({ type: 'SET_IMAGE_EDITOR_SAVE_CALLBACK', payload: callback });
   }, []);
@@ -656,6 +735,13 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   return (
     <EditorContext.Provider value={{ state, actions }}>
       {toast}
+      {/* Debug button on click log the state */}
+      <button
+        className="btn btn-primary  absolute top-1/3 left-8 z-50"
+        onClick={() => console.log('Current editor state:', state.history, state.historyIndex)}
+      >
+        Debug
+      </button>
       {children}
     </EditorContext.Provider>
   );

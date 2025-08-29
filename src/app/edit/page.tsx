@@ -22,7 +22,7 @@ export default function Home() {
   const { theme, isDarkTheme, isLoading } = useTheme();
   const { data: session } = useSession();
   useEffect(() => {
-    checkDatabaseConnection();
+    // checkDatabaseConnection();
     // Set mounted to true after the component has mounted
     setIsMounted(true);
   }, []);
